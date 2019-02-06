@@ -1,5 +1,5 @@
 [package]
-name = "fastcdc-rs"
+name = "fastcdc"
 version = "0.1.0"
 authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
 edition = "2018"
