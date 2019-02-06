@@ -1,0 +1,12 @@
+[package]
+name = "fastcdc-rs"
+version = "0.1.0"
+authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
+edition = "2018"
+description = "FastCDC (content defined chunking) in pure Rust."
+repository = "https://github.com/nlfiedler/fastcdc-rs"
+readme = "README.md"
+keywords = ["cdc", "chunking"]
+license = "MIT"
+
+[dependencies]
