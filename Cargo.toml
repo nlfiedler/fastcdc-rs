@@ -8,5 +8,9 @@ repository = "https://github.com/nlfiedler/fastcdc-rs"
 readme = "README.md"
 keywords = ["cdc", "chunking"]
 license = "MIT"
+exclude = [
+    "TODO.org",
+    "test/*",
+]
 
 [dependencies]
