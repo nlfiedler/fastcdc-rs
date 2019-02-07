@@ -1,26 +1,11 @@
 * FastCDC
 ** Action Plan
-*** DONE Write some code
-*** DONE Write some tests
-*** DONE How should data be fed to chunker? use a large buffer?
-**** just use a slice of u8, caller can use =memmap= for larger content
-**** quickcdc example uses =memmap= crate to read large files
-*** DONE Translate the =cut= function based on slice of u8
-*** DONE Write a FastCDC struct to hold state of chunking
-*** DONE Write an =Iterator= like QuickCDC
-*** DONE =new= for struct does what =deduplicate= does for setup
-*** DONE Try to remove the =flags= argument
-**** in ronomon it indicates the last time we call =deduplicate= function
-*** DONE Decide on how to rectify =usize= and =u32=; it's inevitable
-*** DONE Use quickcdc tests as a guide
-*** DONE Should the iterator return a "chunk" that is just the offset and length?
-*** TODO Write an example that does basically what ronomon does
-**** use =memmap= options =offset= and =len= to read file chunks and checksum
+*** DONE Write an example that does basically what ronomon does
 *** TODO Read the FastCDC paper and add documentation
 **** TODO Where do the magic numbers come from?
 **** TODO What is "center size"?
 **** TODO What is "ceil div"?
 **** TODO What do =mask1= and =mask2= represent?
 **** TODO What are the two loops in =cut= doing?
-*** TODO Use ronomon benchmarks for speed and testing
+*** DONE Use ronomon benchmarks for speed and testing
 *** TODO Convert the ronomon =table.js= to a =build.rs=

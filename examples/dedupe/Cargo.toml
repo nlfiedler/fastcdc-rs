@@ -1,0 +1,13 @@
+[package]
+name = "dedupe"
+version = "0.1.0"
+authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
+edition = "2018"
+license = "MIT"
+publish = false
+
+[dependencies]
+fastcdc = { path = "../.." }
+memmap = "0.7.0"
+crypto-hash = "0.3.3"
+clap = "2.32.0"
