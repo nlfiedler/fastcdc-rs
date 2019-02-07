@@ -17,7 +17,7 @@ pub const MAXIMUM_MIN: usize = 1024;
 /// Largest acceptable value for the maximum chunk size.
 pub const MAXIMUM_MAX: usize = 1_073_741_824;
 
-/// Represents a chunk.
+/// Represents a chunk, returned from the FastCDC iterator.
 pub struct Chunk {
     /// Starting byte position within the original content.
     pub offset: usize,
@@ -25,6 +25,10 @@ pub struct Chunk {
     pub length: usize,
 }
 
+///
+/// The FastCDC chunker implementation. Use `new` to construct a new instance,
+/// and then iterate over the chunks via the `Iterator` trait.
+///
 pub struct FastCDC<'a> {
     source: &'a [u8],
     bytes_processed: usize,
@@ -32,11 +36,17 @@ pub struct FastCDC<'a> {
     min_size: usize,
     avg_size: usize,
     max_size: usize,
-    mask1: u32,
-    mask2: u32,
+    mask_s: u32,
+    mask_l: u32,
 }
 
 impl<'a> FastCDC<'a> {
+    ///
+    /// Construct a new `FastCDC` that will process the given slice of bytes.
+    /// The `min_size` specifies the preferred minimum chunk size, likewise for
+    /// `max_size`; the `avg_size` is what the FastCDC paper refers to as the
+    /// desired "normal size" of the chunks.
+    ///
     pub fn new(source: &'a [u8], min_size: usize, avg_size: usize, max_size: usize) -> Self {
         assert!(min_size >= MINIMUM_MIN);
         assert!(min_size <= MINIMUM_MAX);
@@ -45,8 +55,8 @@ impl<'a> FastCDC<'a> {
         assert!(max_size >= MAXIMUM_MIN);
         assert!(max_size <= MAXIMUM_MAX);
         let bits = logarithm2(avg_size as u32);
-        let mask1 = mask(bits + 1);
-        let mask2 = mask(bits - 1);
+        let mask_s = mask(bits + 1);
+        let mask_l = mask(bits - 1);
         Self {
             source,
             bytes_processed: 0,
@@ -54,8 +64,8 @@ impl<'a> FastCDC<'a> {
             min_size,
             avg_size,
             max_size,
-            mask1,
-            mask2,
+            mask_s,
+            mask_l,
         }
     }
 
@@ -73,22 +83,28 @@ impl<'a> FastCDC<'a> {
             let source_len2: usize = source_offset + source_size;
             let mut hash: u32 = 0;
             source_offset += self.min_size;
+            // Start by using the "harder" chunking judgement to find chunks
+            // that run smaller than the desired normal size.
             while source_offset < source_len1 {
                 let index = self.source[source_offset] as usize;
                 source_offset += 1;
                 hash = (hash >> 1) + TABLE[index];
-                if (hash & self.mask1) == 0 {
+                if (hash & self.mask_s) == 0 {
                     return source_offset - source_start;
                 }
             }
+            // Fall back to using the "easier" chunking judgement to find chunks
+            // that run larger than the desired normal size.
             while source_offset < source_len2 {
                 let index = self.source[source_offset] as usize;
                 source_offset += 1;
                 hash = (hash >> 1) + TABLE[index];
-                if (hash & self.mask2) == 0 {
+                if (hash & self.mask_l) == 0 {
                     return source_offset - source_start;
                 }
             }
+            // All else fails, return the whole chunk. This will happen with
+            // pathological data, such as all zeroes.
             source_size
         }
     }
@@ -133,6 +149,10 @@ fn ceil_div(x: usize, y: usize) -> usize {
     }
 }
 
+///
+/// Find the middle of the desired chunk size, or what the FastCDC paper refers
+/// to as the "normal size".
+///
 fn center_size(average: usize, minimum: usize, source_size: usize) -> usize {
     let mut offset: usize = minimum + ceil_div(minimum, 2);
     if offset > average {

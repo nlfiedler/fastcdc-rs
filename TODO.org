@@ -1,11 +1,3 @@
 * FastCDC
 ** Action Plan
-*** DONE Write an example that does basically what ronomon does
-*** TODO Read the FastCDC paper and add documentation
-**** TODO Where do the magic numbers come from?
-**** TODO What is "center size"?
-**** TODO What is "ceil div"?
-**** TODO What do =mask1= and =mask2= represent?
-**** TODO What are the two loops in =cut= doing?
-*** DONE Use ronomon benchmarks for speed and testing
 *** TODO Convert the ronomon =table.js= to a =build.rs=
