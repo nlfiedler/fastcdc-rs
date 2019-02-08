@@ -2,7 +2,7 @@
 // Copyright (c) 2019 Nathan Fiedler
 //
 
-include!("table.rs");
+include!(concat!(env!("OUT_DIR"), "/table.rs"));
 
 /// Smallest acceptable value for the minimum chunk size.
 pub const MINIMUM_MIN: usize = 64;

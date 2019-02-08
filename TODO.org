@@ -1,3 +1,0 @@
-* FastCDC
-** Action Plan
-*** TODO Convert the ronomon =table.js= to a =build.rs=
