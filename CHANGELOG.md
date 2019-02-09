@@ -5,9 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.0.1] - 2019-02-08
 ### Changed
 - Add `build.rs` to generate the `table.rs` at build time, as needed.
+- Add more documentation and a brief example of using `FastCDC`.
 
 ## [1.0.0] - 2019-02-06
 ### Added

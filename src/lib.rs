@@ -2,6 +2,20 @@
 // Copyright (c) 2019 Nathan Fiedler
 //
 
+//! This crate implements the "FastCDC" content defined chunking algorithm in
+//! pure Rust. A critical aspect of its behavior is that it returns exactly the
+//! same results for the same input. To learn more about content defined
+//! chunking and its applications, see "FastCDC: a Fast and Efficient
+//! Content-Defined Chunking Approach for Data Deduplication"
+//! ([paper](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf)
+//! and
+//! [presentation](https://www.usenix.org/sites/default/files/conference/protected-files/atc16_slides_xia.pdf))
+//!
+//! See the `FastCDC` struct for basic usage and an example.
+//!
+//! For a slightly more involved example, see the `examples` directory in the
+//! source repository.
+
 include!(concat!(env!("OUT_DIR"), "/table.rs"));
 
 /// Smallest acceptable value for the minimum chunk size.
@@ -27,7 +41,18 @@ pub struct Chunk {
 
 ///
 /// The FastCDC chunker implementation. Use `new` to construct a new instance,
-/// and then iterate over the chunks via the `Iterator` trait.
+/// and then iterate over the `Chunk`s via the `Iterator` trait.
+///
+/// This example reads a file into memory and splits it into chunks that are
+/// somewhere between 16KB and 64KB, preferring something around 32KB.
+///
+/// ```no_run
+/// let contents = std::fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+/// let chunker = fastcdc::FastCDC::new(&contents, 16384, 32768, 65536);
+/// for entry in chunker {
+///     println!("offset={} size={}", entry.offset, entry.length);
+/// }
+/// ```
 ///
 pub struct FastCDC<'a> {
     source: &'a [u8],

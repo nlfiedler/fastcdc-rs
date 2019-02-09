@@ -42,6 +42,7 @@ fn generate() -> String {
             result.push(' ');
         }
     }
+    // remove the trailing comma from the last line
     result.truncate(result.len() - 2);
     result.push_str("\n];\n");
     result
