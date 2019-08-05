@@ -164,14 +164,10 @@ fn logarithm2(value: u32) -> u32 {
 }
 
 ///
-/// Division that rounds up where modulus would be zero.
+/// Integer division that rounds up instead of down.
 ///
 fn ceil_div(x: usize, y: usize) -> usize {
-    if x % y != 0 {
-        ((x / y) + 1)
-    } else {
-        (x / y)
-    }
+    (x + y - 1) / y
 }
 
 ///
@@ -221,16 +217,18 @@ mod tests {
 
     #[test]
     fn test_ceil_div() {
-        assert_eq!(ceil_div(10, 3), 3);
-        assert_eq!(ceil_div(9, 3), 4);
-        assert_eq!(ceil_div(6, 2), 4);
-        assert_eq!(ceil_div(5, 2), 2);
+        assert_eq!(ceil_div(10, 5), 2);
+        assert_eq!(ceil_div(11, 5), 3);
+        assert_eq!(ceil_div(10, 3), 4);
+        assert_eq!(ceil_div(9, 3), 3);
+        assert_eq!(ceil_div(6, 2), 3);
+        assert_eq!(ceil_div(5, 2), 3);
     }
 
     #[test]
     fn test_center_size() {
         assert_eq!(center_size(50, 100, 50), 0);
-        assert_eq!(center_size(200, 100, 50), 49);
+        assert_eq!(center_size(200, 100, 50), 50);
         assert_eq!(center_size(200, 100, 40), 40);
     }
 
