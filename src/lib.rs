@@ -167,7 +167,7 @@ fn logarithm2(value: u32) -> u32 {
 /// Division that rounds up where modulus would be zero.
 ///
 fn ceil_div(x: usize, y: usize) -> usize {
-    if x % y == 0 {
+    if x % y != 0 {
         ((x / y) + 1)
     } else {
         (x / y)
