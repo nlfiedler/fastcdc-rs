@@ -24,6 +24,15 @@ which demonstrates reading files of arbitrary size into a memory-mapped buffer
 and passing them through the chunker (and computing the SHA256 hash digest of
 each chunk).
 
+```shell
+$ cargo run --example dedupe -- --size 32768 test/fixtures/SekienAkashita.jpg
+    Finished dev [unoptimized + debuginfo] target(s) in 0.03s
+     Running `target/debug/examples/dedupe --size 32768 test/fixtures/SekienAkashita.jpg`
+hash=5a80871bad4588c7278d39707fe68b8b174b1aa54c59169d3c2c72f1e16ef46d offset=0 size=32857
+hash=13f6a4c6d42df2b76c138c13e86e1379c203445055c2b5f043a5f6c291fa520d offset=32857 size=16408
+hash=0fe7305ba21a5a5ca9f89962c5a6f3e29cd3e2b36f00e565858e0012e5f8df36 offset=49265 size=60201
+```
+
 The unit tests also have some short examples of using the chunker, of which this
 code snippet is an example:
 
