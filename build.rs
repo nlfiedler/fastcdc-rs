@@ -21,8 +21,11 @@ fn generate() -> String {
     // Cleverly make "random" numbers by ciphering all zeros using a key and
     // nonce (a.k.a. initialization vector) of all zeroes. This is effectively
     // noise, but it is predictable noise, so the results are always the same.
+    //
     // Either we do this at build time or we have a file containing "magic"
-    // numbers that no one knows how to generate when needed.
+    // numbers that no one knows how to generate when needed. While that comes
+    // at the cost of adding (build) dependencies and compile time, it makes
+    // very clear the nature of the values and how they are made.
     let mut table = [0u8; 1024];
     let key = GenericArray::from([0u8; 32]);
     let nonce = GenericArray::from([0u8; 16]);
