@@ -195,6 +195,20 @@ fn mask(bits: u32) -> u32 {
     2u32.pow(bits) - 1
 }
 
+//
+// TABLE contains seemingly "random" numbers which are created by ciphering a
+// 1024-byte array of all zeros using a 32-byte key and 16-byte nonce (a.k.a.
+// initialization vector) of all zeroes. The high bit of each value is cleared
+// because 31-bit integers are immune from signed 32-bit integer overflow, which
+// the implementation above relies on for hashing.
+//
+// While this may seem to be effectively noise, it is predictable noise, so the
+// results are always the same. That is the most important aspect of the
+// content-defined chunking algorithm, consistent results over time.
+//
+// The original build.rs script was removed in commit f001c11 and shows the
+// exact implementation used to generate these "magic" numbers.
+//
 #[rustfmt::skip]
 const TABLE: [u32; 256] = [
     0x5c95_c078, 0x2240_8989, 0x2d48_a214, 0x1284_2087, 0x530f_8afb, 0x4745_36b9,
