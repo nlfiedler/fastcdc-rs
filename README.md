@@ -77,7 +77,7 @@ The primary objective of this codebase was to have a Rust implementation with a
 permissive license, which could be used for new projects, without concern for
 data parity with existing implementations.
 
-## Prior Art
+## Other Implementations
 
 This crate is little more than a rewrite of the implementation by Joran Dirk
 Greef (see the ronomon link below), in Rust, and greatly simplified in usage.
@@ -90,3 +90,6 @@ calculate a hash digest of the chunks.
     + An alternative implementation of FastCDC to the one in this crate.
 * [jrobhoward/quickcdc](https://github.com/jrobhoward/quickcdc)
     + Similar but slightly earlier algorithm by some of the same researchers.
+* [titusz/fastcdc-py](https://github.com/titusz/fastcdc-py)
+    + Pure Python port of FastCDC. Compatible with this implementation.
+
