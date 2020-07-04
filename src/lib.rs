@@ -30,6 +30,7 @@ pub const MAXIMUM_MIN: usize = 1024;
 pub const MAXIMUM_MAX: usize = 1_073_741_824;
 
 /// Represents a chunk, returned from the FastCDC iterator.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Chunk {
     /// Starting byte position within the original content.
     pub offset: usize,
@@ -52,6 +53,7 @@ pub struct Chunk {
 /// }
 /// ```
 ///
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FastCDC<'a> {
     source: &'a [u8],
     bytes_processed: usize,
