@@ -1,6 +1,25 @@
 on: [push, pull_request]
 name: Test
 jobs:
+  build:
+    name: Build 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo 
+        uses: actions/checkout@v2
+
+      - name: Install rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo build 
+        uses: actions-rs/cargo@v1
+        with:
+          command: build 
+
   test:
     name: Test
     runs-on: ubuntu-latest
