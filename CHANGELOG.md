@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [1.0.4] - 2020-07-08
+### Added
+- aikorsky: add basic derives for `Chunk` and `FastCDC` structs.
+
 ## [1.0.3] - 2020-03-18
 ### Changed
 - snsmac: moved the generated table of numbers into the source code,
