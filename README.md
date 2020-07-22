@@ -1,4 +1,4 @@
-# FastCDC
+# FastCDC [![docs.rs](https://docs.rs/fastcdc/badge.svg)](https://docs.rs/fastcdc) [![Crates.io](https://img.shields.io/crates/v/fastcdc.svg)](https://crates.io/crates/fastcdc) ![Test](https://github.com/nlfiedler/fastcdc-rs/workflows/Test/badge.svg)
 
 This crate implements the "FastCDC" content defined chunking algorithm in pure
 Rust. A critical aspect of its behavior is that it returns exactly the same
