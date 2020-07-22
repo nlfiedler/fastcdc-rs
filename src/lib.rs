@@ -450,7 +450,6 @@ mod tests {
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].offset, 0);
-        // this size differs from the non-streaming version
         assert_eq!(results[0].length, 14183);
 
         // process the third block
@@ -461,14 +460,11 @@ mod tests {
         assert_eq!(results[0].length, 32768);
 
         // process the last block
-        let chunker = FastCDC::with_eof(&contents[98304..], 8192, 16384, 32768, false);
+        let chunker = FastCDC::with_eof(&contents[98304..], 8192, 16384, 32768, true);
         let results: Vec<Chunk> = chunker.collect();
-        // TODO: this is wrong, should be at least one more chunk
-        assert_eq!(results.len(), 0);
-        // assert_eq!(results[0].offset, 0);
-        // assert_eq!(results[0].length, 32768);
-        // assert_eq!(results[1].offset, 98415);
-        // assert_eq!(results[1].length, 11051);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].offset, 0);
+        assert_eq!(results[0].length, 11162);
     }
 
     #[test]
