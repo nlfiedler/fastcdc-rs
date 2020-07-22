@@ -63,6 +63,7 @@ pub struct FastCDC<'a> {
     max_size: usize,
     mask_s: u32,
     mask_l: u32,
+    eof: bool,
 }
 
 impl<'a> FastCDC<'a> {
@@ -70,9 +71,22 @@ impl<'a> FastCDC<'a> {
     /// Construct a new `FastCDC` that will process the given slice of bytes.
     /// The `min_size` specifies the preferred minimum chunk size, likewise for
     /// `max_size`; the `avg_size` is what the FastCDC paper refers to as the
-    /// desired "normal size" of the chunks.
-    ///
+    /// desired "normal size" of the chunks;
+
     pub fn new(source: &'a [u8], min_size: usize, avg_size: usize, max_size: usize) -> Self {
+        FastCDC::with_option(source, min_size, avg_size, max_size, true)
+    }
+    
+    /// `eof` is true when `source` contains the end of the file, false means there
+    /// is potential for more bytes for this file that are not in the current source buffer.
+    /// useful for stream chunking without loading entire file into memory
+    pub fn with_option(
+        source: &'a [u8],
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
+        eof: bool, //false means there is potential for more bytes not in the buffer yet
+    ) -> Self {
         assert!(min_size >= MINIMUM_MIN);
         assert!(min_size <= MINIMUM_MAX);
         assert!(avg_size >= AVERAGE_MIN);
@@ -91,13 +105,18 @@ impl<'a> FastCDC<'a> {
             max_size,
             mask_s,
             mask_l,
+            eof,
         }
     }
 
     /// Returns the size of the next chunk.
     fn cut(&mut self, mut source_offset: usize, mut source_size: usize) -> usize {
         if source_size <= self.min_size {
-            source_size
+            if !self.eof {
+                0
+            } else {
+                source_size
+            }
         } else {
             if source_size > self.max_size {
                 source_size = self.max_size;
@@ -128,9 +147,15 @@ impl<'a> FastCDC<'a> {
                     return source_offset - source_start;
                 }
             }
-            // All else fails, return the whole chunk. This will happen with
-            // pathological data, such as all zeroes.
-            source_size
+            // If source is not the last buffer, we may yet find a larger chunk.
+            // If sourceSize === maximum, we will not find a larger chunk and should emit.
+            if !self.eof && source_size < self.max_size {
+                0
+            } else {
+                // All else fails, return the whole chunk. This will happen with
+                // pathological data, such as all zeroes.
+                source_size
+            }
         }
     }
 }
@@ -143,13 +168,17 @@ impl<'a> Iterator for FastCDC<'a> {
             None
         } else {
             let chunk_size = self.cut(self.bytes_processed, self.bytes_remaining);
-            let chunk_start = self.bytes_processed;
-            self.bytes_processed += chunk_size;
-            self.bytes_remaining -= chunk_size;
-            Some(Chunk {
-                offset: chunk_start,
-                length: chunk_size,
-            })
+            if chunk_size == 0 {
+                None
+            } else {
+                let chunk_start = self.bytes_processed;
+                self.bytes_processed += chunk_size;
+                self.bytes_remaining -= chunk_size;
+                Some(Chunk {
+                    offset: chunk_start,
+                    length: chunk_size,
+                })
+            }
         }
     }
 }
