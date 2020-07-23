@@ -427,66 +427,52 @@ mod tests {
 
     #[test]
     fn test_sekien_16k_chunks_streaming() {
-        //
-        // This is the streaming version of the above test;
-        //
-        let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
+        let filepath = "test/fixtures/SekienAkashita.jpg";
+        let read_result = fs::read(filepath);
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
 
-        // simulate a byte stream's fixed buffer size (this should be >= max chunk size)
-        let stream_buffer_size = 32768;
-        // simulate reading forward in the file
-        let mut file_pointer = 0;
+        // Just as with the non-streaming test, we expect to have the same
+        // number of chunks, with the same offsets and sizes, every time.
+        let chunk_offsets = [0, 22366, 30648, 46951, 65647, 98415];
+        let chunk_sizes = [22366, 8282, 16303, 18696, 32768, 11051];
 
-        // process the first of several blocks
-        let chunker = FastCDC::with_eof(&contents[..stream_buffer_size], 8192, 16384, 32768, false);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 22366);
-        assert_eq!(results[1].offset, 22366);
-        assert_eq!(results[1].length, 8282);
+        // The size of the buffer that we will be using for streaming the
+        // content. It should be greater than or equal to the upper bound on the
+        // chunk size.
+        const BUF_SIZE: usize = 32768;
 
-        // move pointer forward the amount of processed bytes
-        file_pointer += results[0].length + results[1].length;
+        // Get the size of the file to detect when we have reached the last
+        // block of data to be processed by the chunker.
+        let attr = fs::metadata(filepath).unwrap();
+        let file_size = attr.len();
+        let mut file_pos = 0;
+        let mut chunk_index = 0;
 
-        // process the second block
-        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 16303);
-
-        // move pointer forward the amount of processed bytes
-        file_pointer += results[0].length;
-
-        // process the third block
-        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 18696);
-
-        // move pointer forward the amount of processed bytes
-        file_pointer += results[0].length;
-
-        // process the fourth block
-        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 32768);
-
-        // move pointer forward the amount of processed bytes
-        file_pointer += results[0].length;
-
-        // process the last block, `eof` set true as this is the final set of data for the file.
-        let chunker = FastCDC::with_eof(&contents[file_pointer..], 8192, 16384, 32768, true);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 11051);
+        // We expect to encounter the chunks in the following groups based on
+        // the buffer size we selected.
+        for group_size in &[2, 1, 1, 1, 1] {
+            let upper_bound = file_pos + BUF_SIZE;
+            let (eof, slice) = if upper_bound >= file_size as usize {
+                (true, &contents[file_pos..])
+            } else {
+                (false, &contents[file_pos..upper_bound])
+            };
+            let chunker = FastCDC::with_eof(slice, 8192, 16384, 32768, eof);
+            let results: Vec<Chunk> = chunker.collect();
+            assert_eq!(results.len(), *group_size);
+            for idx in 0..*group_size {
+                assert_eq!(results[idx].offset + file_pos, chunk_offsets[chunk_index]);
+                assert_eq!(results[idx].length, chunk_sizes[chunk_index]);
+                chunk_index += 1;
+            }
+            // advance the file pointer after using it for comparing offsets
+            for result in results {
+                file_pos += result.length;
+            }
+        }
+        // assert that we processed every byte of the file
+        assert_eq!(file_pos as u64, file_size);
     }
 
     #[test]
