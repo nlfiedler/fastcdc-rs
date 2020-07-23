@@ -428,16 +428,19 @@ mod tests {
     #[test]
     fn test_sekien_16k_chunks_streaming() {
         //
-        // This is the streaming version of the above test; the results are
-        // different, which is to be expected? Not sure that I am happy about
-        // that, why should streaming change the chunk boundaries?
+        // This is the streaming version of the above test;
         //
         let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
 
+        // simulate a byte stream's fixed buffer size (this should be >= max chunk size)
+        let stream_buffer_size = 32768;
+        // simulate reading forward in the file
+        let mut file_pointer = 0;
+
         // process the first of several blocks
-        let chunker = FastCDC::with_eof(&contents[..32768], 8192, 16384, 32768, false);
+        let chunker = FastCDC::with_eof(&contents[..stream_buffer_size], 8192, 16384, 32768, false);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].offset, 0);
@@ -445,26 +448,45 @@ mod tests {
         assert_eq!(results[1].offset, 22366);
         assert_eq!(results[1].length, 8282);
 
+        // move pointer forward the amount of processed bytes
+        file_pointer += results[0].length + results[1].length;
+
         // process the second block
-        let chunker = FastCDC::with_eof(&contents[32768..65536], 8192, 16384, 32768, false);
+        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 14183);
+        assert_eq!(results[0].length, 16303);
+
+        // move pointer forward the amount of processed bytes
+        file_pointer += results[0].length;
 
         // process the third block
-        let chunker = FastCDC::with_eof(&contents[65536..98304], 8192, 16384, 32768, false);
+        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
+        let results: Vec<Chunk> = chunker.collect();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].offset, 0);
+        assert_eq!(results[0].length, 18696);
+
+        // move pointer forward the amount of processed bytes
+        file_pointer += results[0].length;
+
+        // process the fourth block
+        let chunker = FastCDC::with_eof(&contents[file_pointer..(file_pointer + stream_buffer_size)], 8192, 16384, 32768, false);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].offset, 0);
         assert_eq!(results[0].length, 32768);
 
-        // process the last block
-        let chunker = FastCDC::with_eof(&contents[98304..], 8192, 16384, 32768, true);
+        // move pointer forward the amount of processed bytes
+        file_pointer += results[0].length;
+
+        // process the last block, `eof` set true as this is the final set of data for the file.
+        let chunker = FastCDC::with_eof(&contents[file_pointer..], 8192, 16384, 32768, true);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 11162);
+        assert_eq!(results[0].length, 11051);
     }
 
     #[test]
