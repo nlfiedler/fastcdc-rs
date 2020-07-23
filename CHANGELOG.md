@@ -5,9 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.0.5] - 2020-07-22
 ### Added
-- Smoozilla: add `with_option()` constructor for streaming input data.
+- Smoozilla: add `with_eof()` constructor for streaming input data.
 
 ## [1.0.4] - 2020-07-08
 ### Added
