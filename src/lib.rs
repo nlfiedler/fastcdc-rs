@@ -187,6 +187,14 @@ impl<'a> Iterator for FastCDC<'a> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // NOTE: This intentionally returns the upper bound for both `size_hint` values, as the upper bound
+        // doesn't actually seem to get used by `std` and using the actual lower bound is practically
+        // guaranteed to require a second capacity growth.
+        let upper_bound = self.source.len() / self.min_size;
+        (upper_bound, Some(upper_bound))
+    }
 }
 
 ///
