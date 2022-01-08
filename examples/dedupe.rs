@@ -9,7 +9,7 @@ use std::fs::File;
 use std::str::FromStr;
 
 fn main() {
-    fn is_integer(v: String) -> Result<(), String> {
+    fn is_integer(v: &str) -> Result<(), String> {
         if u64::from_str(&v).is_ok() {
             return Ok(());
         }
@@ -20,8 +20,8 @@ fn main() {
     let matches = App::new("Example of using fastcdc crate.")
         .about("Splits a (large) file and computes checksums.")
         .arg(
-            Arg::with_name("size")
-                .short("s")
+            Arg::new("size")
+                .short('s')
                 .long("size")
                 .value_name("SIZE")
                 .help("The desired average size of the chunks.")
@@ -29,7 +29,7 @@ fn main() {
                 .validator(is_integer),
         )
         .arg(
-            Arg::with_name("INPUT")
+            Arg::new("INPUT")
                 .help("Sets the input file to use")
                 .required(true)
                 .index(1),
