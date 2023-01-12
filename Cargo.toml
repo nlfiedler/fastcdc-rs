@@ -1,6 +1,6 @@
 [package]
 name = "fastcdc"
-version = "1.0.7"
+version = "1.0.8"
 authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
 edition = "2018"
 description = "FastCDC (content defined chunking) in pure Rust."
