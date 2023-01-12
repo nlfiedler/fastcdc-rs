@@ -32,8 +32,6 @@ pub const MAXIMUM_MAX: usize = 1_073_741_824;
 /// Represents a chunk, returned from the FastCDC iterator.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Chunk {
-    /// Hash found at this location.
-    pub hash: u32,
     /// Starting byte position within the original content.
     pub offset: usize,
     /// Length of the chunk in bytes.
@@ -118,12 +116,12 @@ impl<'a> FastCDC<'a> {
     }
 
     /// Returns the size of the next chunk.
-    fn cut(&mut self, mut source_offset: usize, mut source_size: usize) -> (u32, usize) {
+    fn cut(&mut self, mut source_offset: usize, mut source_size: usize) -> usize {
         if source_size <= self.min_size {
             if !self.eof {
-                (0, 0)
+                0
             } else {
-                (0, source_size)
+                source_size
             }
         } else {
             if source_size > self.max_size {
@@ -142,7 +140,7 @@ impl<'a> FastCDC<'a> {
                 source_offset += 1;
                 hash = (hash >> 1) + TABLE[index];
                 if (hash & self.mask_s) == 0 {
-                    return (hash, source_offset - source_start);
+                    return source_offset - source_start;
                 }
             }
             // Fall back to using the "easier" chunking judgement to find chunks
@@ -152,17 +150,17 @@ impl<'a> FastCDC<'a> {
                 source_offset += 1;
                 hash = (hash >> 1) + TABLE[index];
                 if (hash & self.mask_l) == 0 {
-                    return (hash, source_offset - source_start);
+                    return source_offset - source_start;
                 }
             }
             // If source is not the last buffer, we may yet find a larger chunk.
             // If sourceSize === maximum, we will not find a larger chunk and should emit.
             if !self.eof && source_size < self.max_size {
-                (hash, 0)
+                0
             } else {
                 // All else fails, return the whole chunk. This will happen with
                 // pathological data, such as all zeroes.
-                (hash, source_size)
+                source_size
             }
         }
     }
@@ -175,7 +173,7 @@ impl<'a> Iterator for FastCDC<'a> {
         if self.bytes_remaining == 0 {
             None
         } else {
-            let (chunk_hash, chunk_size) = self.cut(self.bytes_processed, self.bytes_remaining);
+            let chunk_size = self.cut(self.bytes_processed, self.bytes_remaining);
             if chunk_size == 0 {
                 None
             } else {
@@ -183,7 +181,6 @@ impl<'a> Iterator for FastCDC<'a> {
                 self.bytes_processed += chunk_size;
                 self.bytes_remaining -= chunk_size;
                 Some(Chunk {
-                    hash: chunk_hash,
                     offset: chunk_start,
                     length: chunk_size,
                 })
@@ -409,7 +406,6 @@ mod tests {
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 10);
         for entry in results {
-            assert_eq!(entry.hash, 3106636015);
             assert_eq!(entry.offset % 1024, 0);
             assert_eq!(entry.length, 1024);
         }
@@ -423,22 +419,16 @@ mod tests {
         let chunker = FastCDC::new(&contents, 8192, 16384, 32768);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 6);
-        assert_eq!(results[0].hash, 1527472128);
         assert_eq!(results[0].offset, 0);
         assert_eq!(results[0].length, 22366);
-        assert_eq!(results[1].hash, 1174757376);
         assert_eq!(results[1].offset, 22366);
         assert_eq!(results[1].length, 8282);
-        assert_eq!(results[2].hash, 2687197184);
         assert_eq!(results[2].offset, 30648);
         assert_eq!(results[2].length, 16303);
-        assert_eq!(results[3].hash, 1210105856);
         assert_eq!(results[3].offset, 46951);
         assert_eq!(results[3].length, 18696);
-        assert_eq!(results[4].hash, 2984739645);
         assert_eq!(results[4].offset, 65647);
         assert_eq!(results[4].length, 32768);
-        assert_eq!(results[5].hash, 1121740051);
         assert_eq!(results[5].offset, 98415);
         assert_eq!(results[5].length, 11051);
     }
@@ -501,13 +491,10 @@ mod tests {
         let chunker = FastCDC::new(&contents, 16384, 32768, 65536);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 3);
-        assert_eq!(results[0].hash, 2772598784);
         assert_eq!(results[0].offset, 0);
         assert_eq!(results[0].length, 32857);
-        assert_eq!(results[1].hash, 1651589120);
         assert_eq!(results[1].offset, 32857);
         assert_eq!(results[1].length, 16408);
-        assert_eq!(results[2].hash, 1121740051);
         assert_eq!(results[2].offset, 49265);
         assert_eq!(results[2].length, 60201);
     }
@@ -520,10 +507,8 @@ mod tests {
         let chunker = FastCDC::new(&contents, 32768, 65536, 131_072);
         let results: Vec<Chunk> = chunker.collect();
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0].hash, 2772598784);
         assert_eq!(results[0].offset, 0);
         assert_eq!(results[0].length, 32857);
-        assert_eq!(results[1].hash, 1121740051);
         assert_eq!(results[1].offset, 32857);
         assert_eq!(results[1].length, 76609);
     }
