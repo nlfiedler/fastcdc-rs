@@ -1,32 +1,20 @@
 //
-// Copyright (c) 2020 Nathan Fiedler
+// Copyright (c) 2023 Nathan Fiedler
 //
-use clap::{App, Arg};
+use clap::{arg, command, value_parser, Arg};
 use crypto_hash::{hex_digest, Algorithm};
 use fastcdc::*;
 use memmap::MmapOptions;
 use std::fs::File;
-use std::str::FromStr;
 
 fn main() {
-    fn is_integer(v: &str) -> Result<(), String> {
-        if u64::from_str(&v).is_ok() {
-            return Ok(());
-        }
-        Err(String::from(
-            "The size must be a valid unsigned 64-bit integer.",
-        ))
-    }
-    let matches = App::new("Example of using fastcdc crate.")
+    let matches = command!("Example of using fastcdc crate.")
         .about("Splits a (large) file and computes checksums.")
         .arg(
-            Arg::new("size")
-                .short('s')
-                .long("size")
-                .value_name("SIZE")
-                .help("The desired average size of the chunks.")
-                .takes_value(true)
-                .validator(is_integer),
+            arg!(
+                -s --size <SIZE> "The desired average size of the chunks."
+            )
+            .value_parser(value_parser!(u64)),
         )
         .arg(
             Arg::new("INPUT")
@@ -35,9 +23,9 @@ fn main() {
                 .index(1),
         )
         .get_matches();
-    let size = matches.value_of("size").unwrap_or("131072");
-    let avg_size = u64::from_str(size).unwrap() as usize;
-    let filename = matches.value_of("INPUT").unwrap();
+    let size = matches.get_one::<u64>("size").unwrap_or(&131072);
+    let avg_size = *size as usize;
+    let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).expect("cannot open file!");
     let mmap = unsafe { MmapOptions::new().map(&file).expect("cannot create mmap?") };
     let min_size = avg_size / 2;

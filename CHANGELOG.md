@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [1.0.7] - 2023-01-11
+### Added
+- dristic: expose hash on chunk struct.
+
 ## [1.0.6] - 2021-01-08
 ### Added
 - rickvanprim: implement `size_hint()` for FastCDC struct.

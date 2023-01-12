@@ -1,6 +1,6 @@
 [package]
 name = "fastcdc"
-version = "1.0.6"
+version = "1.0.7"
 authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
 edition = "2018"
 description = "FastCDC (content defined chunking) in pure Rust."
@@ -16,4 +16,4 @@ exclude = [
 [dev-dependencies]
 memmap = "0.7.0"
 crypto-hash = "0.3.4"
-clap = "3.0.5"
+clap = { version = "4.0.32", features = ["cargo"] }
