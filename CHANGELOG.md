@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [2.0.0] - 2023-01-14
+### Added
+- **Breaking:** dristic: expose hash on chunk struct.
+
 ## [1.0.8] - 2023-01-12
 ### Added
 - revert breaking change "expose hash on chunk struct."
