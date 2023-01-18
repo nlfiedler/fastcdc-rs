@@ -254,8 +254,7 @@ fn mask(bits: u32) -> u32 {
 // results are always the same. That is the most important aspect of the
 // content-defined chunking algorithm, consistent results over time.
 //
-// The original build.rs script was removed in commit f001c11 and shows the
-// exact implementation used to generate these "magic" numbers.
+// The program to produce this table is named table32.rs in examples.
 //
 #[rustfmt::skip]
 const TABLE: [u32; 256] = [

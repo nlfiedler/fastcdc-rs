@@ -14,6 +14,9 @@ exclude = [
 ]
 
 [dev-dependencies]
-memmap = "0.7.0"
-crypto-hash = "0.3.4"
+aes = "0.8.2"
+byteorder = "1.4.3"
 clap = { version = "4.0.32", features = ["cargo"] }
+crypto-hash = "0.3.4"
+ctr = "0.9.2"
+memmap = "0.7.0"
