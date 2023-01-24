@@ -31,14 +31,12 @@ fn generate() -> String {
     for index in 1..257 {
         let mut num: u32 = rdr.read_u32::<BigEndian>().unwrap();
         num = num % MAX_VALUE;
-        result.push_str(&format!("{:#010x},", num));
-        if index % 6 == 0 {
+        result.push_str(&format!(" {:#010x},", num));
+        if index % 8 == 0 {
             result.push('\n');
-        } else {
-            result.push(' ');
         }
     }
-    // remove the trailing comma from the last line
+    // remove the trailing comma (and final newline)
     result.truncate(result.len() - 2);
     result.push_str("\n];\n");
     result

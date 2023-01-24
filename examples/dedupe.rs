@@ -3,7 +3,7 @@
 //
 use clap::{arg, command, value_parser, Arg};
 use crypto_hash::{hex_digest, Algorithm};
-use fastcdc::*;
+use fastcdc::chunker::v2016::*;
 use memmap::MmapOptions;
 use std::fs::File;
 
@@ -14,7 +14,7 @@ fn main() {
             arg!(
                 -s --size <SIZE> "The desired average size of the chunks."
             )
-            .value_parser(value_parser!(u64)),
+            .value_parser(value_parser!(u32)),
         )
         .arg(
             Arg::new("INPUT")
@@ -23,8 +23,8 @@ fn main() {
                 .index(1),
         )
         .get_matches();
-    let size = matches.get_one::<u64>("size").unwrap_or(&131072);
-    let avg_size = *size as usize;
+    let size = matches.get_one::<u32>("size").unwrap_or(&131072);
+    let avg_size = *size;
     let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).expect("cannot open file!");
     let mmap = unsafe { MmapOptions::new().map(&file).expect("cannot create mmap?") };
@@ -32,8 +32,9 @@ fn main() {
     let max_size = avg_size * 2;
     let chunker = FastCDC::new(&mmap[..], min_size, avg_size, max_size);
     for entry in chunker {
-        let end = entry.offset + entry.length;
-        let digest = hex_digest(Algorithm::SHA256, &mmap[entry.offset..end]);
+        let offset: usize = entry.offset as usize;
+        let end: usize = offset + entry.length as usize;
+        let digest = hex_digest(Algorithm::SHA256, &mmap[offset..end]);
         println!(
             "hash={} offset={} size={}",
             digest, entry.offset, entry.length

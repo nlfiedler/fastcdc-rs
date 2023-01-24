@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Changed
+- **Breaking:** moved ronomon FastCDC implementation into `chunker::ronomon` module.
+### Added
+- Canonical implementation of FastCDC from 2016 paper in `chunker::v2016` module.
+
 ## [2.0.0] - 2023-01-14
 ### Added
 - **Breaking:** dristic: expose hash on chunk struct.

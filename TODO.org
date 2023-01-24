@@ -1,29 +1,26 @@
 * Action Items
 ** TODO Rewrite
-*** TODO parameterize the algorithm to allow for either ronomon or 2020 versions
-**** use base64 crate as an example
-*** TODO implement fastcdc 2020 version
-**** c.f. https://github.com/wxiacode/destor/blob/master/src/chunking
-*** TODO test: use sample test data generation functions from the ~PCI~ paper (figures 29-31)
-*** TODO doc: explain that =ronomon= implementation uses NC level 1
-*** TODO doc: explain about the empiracally derived masks from FastCDC
-**** they were based on their table of random numbers and the test data sets
-**** unlikely there is any significant value in using their mask values
-*** TODO doc: explain what (little) value the chunk hash offers
-**** can be used as an index key for applications rather than compute a digest
-**** c.f. SuperCDC 2022 paper ~Memory-efficient Structure Design~
-*** TODO offer a 2-byte rolling version (c.f. FastCDC 2020 section 3.7)
-*** TODO doc: write a migration guide for existing applications (show before and after example)
-*** TODO write a proper implementation of the 2016 version
-**** c.f. https://github.com/wxiacode/restic-FastCDC (Go)
-**** c.f. https://github.com/sleepybishop/fastcdc (C)
 *** TODO allow for parameterized normalization level
 ***** normlization level is either 0, 1, 2, or 3
 ***** mask num_bits = log(avg_chunk_size)
 ***** MaskS = (1 << num_bits + normalization) - 1
 ***** MaskL = (1 << num_bits - normalization) - 1
+#+begin_src rust
+  let normalization = 1;
+  let num_bits = 12;
+  let mask_s = (1u64 << (num_bits + normalization)) - 1;
+  let mask_l = (1u64 << (num_bits - normalization)) - 1;
+#+end_src
 ***** c.f. https://github.com/jotfs/fastcdc-go/blob/master/fastcdc.go
 *** TODO incorporate some form of streaming support based on =Read=
 **** c.f. https://gitlab.com/asuran-rs/asuran/ (asuran-chunker, uses =fastcdc= with =Read=)
 **** basically just allocate a buffer 2*max and fill it as needed
 **** c.f. https://github.com/jotfs/fastcdc-go/blob/master/fastcdc.go
+*** TODO implement improved 2020 version (rolling 2-bytes per iteration)
+**** c.f. FastCDC 2020 section 3.7
+**** create a =chunker::v2020= module
+*** TODO chunk size limits should be based on normalization level
+**** that is, with NC 2 or 3, the required masks will be +/-2 or +/-3 bits from the average
+*** TODO doc: write a migration guide for existing applications (show before and after example)
+*** TODO test: check if ronomon version of fastcdc produces same results as rust version
+**** if so, maybe make this a requirement of the rust version of ronomon
