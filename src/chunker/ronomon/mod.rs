@@ -127,7 +127,7 @@ impl<'a> FastCDC<'a> {
     }
 
     /// Returns the size of the next chunk.
-    fn cut(&mut self, mut source_offset: usize, mut source_size: usize) -> (u32, usize) {
+    fn cut(&self, mut source_offset: usize, mut source_size: usize) -> (u32, usize) {
         if source_size <= self.min_size {
             if !self.eof {
                 (0, 0)
