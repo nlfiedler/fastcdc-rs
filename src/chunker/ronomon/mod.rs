@@ -50,8 +50,10 @@ pub struct Chunk {
 }
 
 ///
-/// The FastCDC chunker implementation. Use `new` to construct a new instance,
-/// and then iterate over the `Chunk`s via the `Iterator` trait.
+/// The FastCDC chunker implementation by Joran Dirk Greef.
+/// 
+/// Use `new` to construct a new instance, and then iterate over the `Chunk`s
+/// via the `Iterator` trait.
 ///
 /// This example reads a file into memory and splits it into chunks that are
 /// somewhere between 16KB and 64KB, preferring something around 32KB.

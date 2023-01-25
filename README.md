@@ -1,6 +1,6 @@
 # FastCDC [![docs.rs](https://docs.rs/fastcdc/badge.svg)](https://docs.rs/fastcdc) [![Crates.io](https://img.shields.io/crates/v/fastcdc.svg)](https://crates.io/crates/fastcdc) ![Test](https://github.com/nlfiedler/fastcdc-rs/workflows/Test/badge.svg)
 
-This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm described in 2016 by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
+This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm orginally described in 2016 by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
 
 ## Requirements
 
@@ -16,22 +16,22 @@ $ cargo test
 
 ## Example Usage
 
-An example can be found in the `examples` directory of the source repository,
-which demonstrates reading files of arbitrary size into a memory-mapped buffer
-and passing them through the chunker (and computing the SHA256 hash digest of
-each chunk).
+Examples can be found in the `examples` directory of the source repository,
+which demonstrate reading files of arbitrary size into a memory-mapped buffer
+and passing them through the different chunker implementations.
 
 ```shell
-$ cargo run --example dedupe -- --size 16384 test/fixtures/SekienAkashita.jpg
+$ cargo run --example v2016 -- --size 16384 test/fixtures/SekienAkashita.jpg
     Finished dev [unoptimized + debuginfo] target(s) in 0.03s
-     Running `target/debug/examples/dedupe --size 16384 test/fixtures/SekienAkashita.jpg`
-hash=e63429b466becce0ec9eaa9e257f7065a0ba22e2e34f8c2fab4e284b46516400 offset=0 size=32768
-hash=33f5615317b5672c281da3f55a357a3532799814f4248102f15abd7b8d178fb8 offset=32768 size=32768
-hash=952bb9483c7c08d45c5f059b62277690a6ac7d6fcdb5a53b76fd4c937fbce3bd offset=65536 size=26610
-hash=7fa5b12134dc75cd2ac8dc60d3a8f3c8d22f0ee9d4cf74a4aa937e2a0d2d79a5 offset=92146 size=17320
+     Running `target/debug/examples/v2016 --size 16384 test/fixtures/SekienAkashita.jpg`
+hash=17968276318003433923 offset=0 size=21325
+hash=4098594969649699419 offset=21325 size=17140
+hash=15733367461443853673 offset=38465 size=28084
+hash=4509236223063678303 offset=66549 size=18217
+hash=2504464741100432583 offset=84766 size=24700
 ```
 
-The unit tests also have some short examples of using the chunker, of which this
+The unit tests also have some short examples of using the chunkers, of which this
 code snippet is an example:
 
 ```rust
@@ -49,7 +49,7 @@ assert_eq!(results[1].length, 42917);
 
 ## Reference Material
 
-The algorithm is as described in "FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication"; see the [paper](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), and [presentation](https://www.usenix.org/sites/default/files/conference/protected-files/atc16_slides_xia.pdf) for details. There are some minor differences, as described below.
+The original algorithm is described in [FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), while the improved "rolling two bytes each time" version is detailed in [The Design of Fast Content-Defined Chunking for Data Deduplication Based Storage Systems](https://ieeexplore.ieee.org/document/9055082).
 
 ## Other Implementations
 

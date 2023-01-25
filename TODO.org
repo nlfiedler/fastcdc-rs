@@ -1,26 +1,18 @@
 * Action Items
 ** TODO Rewrite
-*** TODO allow for parameterized normalization level
-***** normlization level is either 0, 1, 2, or 3
-***** mask num_bits = log(avg_chunk_size)
-***** MaskS = (1 << num_bits + normalization) - 1
-***** MaskL = (1 << num_bits - normalization) - 1
-#+begin_src rust
-  let normalization = 1;
-  let num_bits = 12;
-  let mask_s = (1u64 << (num_bits + normalization)) - 1;
-  let mask_l = (1u64 << (num_bits - normalization)) - 1;
-#+end_src
-***** c.f. https://github.com/jotfs/fastcdc-go/blob/master/fastcdc.go
+*** TODO remove =chunker= level (bring everything up one level)
+*** TODO doc: add migration guide to =README.md=
 *** TODO incorporate some form of streaming support based on =Read=
 **** c.f. https://gitlab.com/asuran-rs/asuran/ (asuran-chunker, uses =fastcdc= with =Read=)
 **** basically just allocate a buffer 2*max and fill it as needed
 **** c.f. https://github.com/jotfs/fastcdc-go/blob/master/fastcdc.go
-*** TODO implement improved 2020 version (rolling 2-bytes per iteration)
-**** c.f. FastCDC 2020 section 3.7
-**** create a =chunker::v2020= module
-*** TODO chunk size limits should be based on normalization level
-**** that is, with NC 2 or 3, the required masks will be +/-2 or +/-3 bits from the average
-*** TODO doc: write a migration guide for existing applications (show before and after example)
+**** c.f. https://github.com/wxiacode/Duplicacy-FastCDC/blob/master/src/duplicacy_chunkmaker.go
 *** TODO test: check if ronomon version of fastcdc produces same results as rust version
 **** if so, maybe make this a requirement of the rust version of ronomon
+** timing on =MSEdge-Win10.ova= with 4mb chunks
+*** run with =--release= flag 7 times, drop low/high, average remaining 5
+| chunker | avg time |
+|---------+----------|
+| v2020   |    3.437 |
+| ronomon |    4.085 |
+| v2016   |    4.266 |
