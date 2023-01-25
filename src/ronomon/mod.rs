@@ -60,7 +60,7 @@ pub struct Chunk {
 ///
 /// ```no_run
 /// let contents = std::fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
-/// let chunker = fastcdc::chunker::ronomon::FastCDC::new(&contents, 16384, 32768, 65536);
+/// let chunker = fastcdc::ronomon::FastCDC::new(&contents, 16384, 32768, 65536);
 /// for entry in chunker {
 ///     println!("offset={} size={}", entry.offset, entry.length);
 /// }

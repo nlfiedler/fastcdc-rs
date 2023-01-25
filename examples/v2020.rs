@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Nathan Fiedler
 //
 use clap::{arg, command, value_parser, Arg};
-use fastcdc::chunker::v2020::*;
+use fastcdc::v2020::*;
 use memmap::MmapOptions;
 use std::fs::File;
 

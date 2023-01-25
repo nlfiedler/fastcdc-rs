@@ -20,14 +20,19 @@
 //!
 //! Before the 3.0 release:
 //!
-//! ```ignore
+//! ```no_run
+//! # use fastcdc::ronomon as fastcdc;
+//! # use std::fs;
+//! # let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 //! let chunker = fastcdc::FastCDC::new(&contents, 8192, 16384, 32768);
 //! ```
 //!
 //! After the 3.0 release:
 //!
-//! ```ignore
-//! let chunker = fastcdc::chunker::ronomon::FastCDC::new(&contents, 8192, 16384, 32768);
+//! ```no_run
+//! # use std::fs;
+//! # let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+//! let chunker = fastcdc::ronomon::FastCDC::new(&contents, 8192, 16384, 32768);
 //! ```
 //!
 //! The cut points produced will be identical to previous releases as the
@@ -41,15 +46,15 @@
 //! [ronomon/deduplication](https://github.com/ronomon/deduplication)
 //! repository, written by Joran Dirk Greef. That variation makes several
 //! changes to the original algorithm, primarily to accomodate JavaScript. The
-//! Rust version of this variation is found in the `chunker::ronomon` module in
-//! this crate.
+//! Rust version of this variation is found in the `ronomon` module in this
+//! crate.
 //!
 //! For a canonical implementation of the algorithm as described in the 2016
-//! paper, see the `chunker::v2016` crate.
+//! paper, see the `v2016` crate.
 //!
 //! For a canonical implementation of the algorithm as described in the 2020
-//! paper, see the `chunker::v2020` crate. This implementation produces
-//! identical cut points as the 2016 version, but does so a bit faster.
+//! paper, see the `v2020` crate. This implementation produces identical cut
+//! points as the 2016 version, but does so a bit faster.
 //! 
 //! If you are using this crate for the first time, the `v2020` implementation
 //! would be the most approprite. It uses 64-bit hash values and tends to be
@@ -61,7 +66,7 @@
 //!
 //! ```no_run
 //! use std::fs;
-//! use fastcdc::chunker::v2020;
+//! use fastcdc::v2020;
 //! let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 //! let chunker = v2020::FastCDC::new(&contents, 4096, 16384, 65535);
 //! for entry in chunker {
@@ -75,7 +80,7 @@
 //!
 //! ```no_run
 //! use std::fs;
-//! use fastcdc::chunker::v2020::{FastCDC, Normalization};
+//! use fastcdc::v2020::{FastCDC, Normalization};
 //! let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 //! let chunker = FastCDC::with_level(&contents, 8192, 16384, 32768, Normalization::Level3);
 //! for entry in chunker {
@@ -86,9 +91,10 @@
 //! Notice that the minimum and maximum chunk sizes were changed in the example
 //! using the maximum normalized chunking level. This is due to the behavior of
 //! normalized chunking in which the generated chunks tend to be closer to the
-//! expected chunk size. With lower levels of normalized chunking, the size of
-//! the generated chunks will be much greater. See the documentation of the
-//! `Normalization` enum for more detail.
+//! expected chunk size. It is not necessary to change the min/max values, just
+//! something of which to be aware. With lower levels of normalized chunking,
+//! the size of the generated chunks will vary more. See the documentation of
+//! the `Normalization` enum for more detail as well as the FastCDC paper.
 //!
 //! ## Minimum and Maximum
 //!
@@ -108,4 +114,6 @@
 //! Ideally you want cut points that are determined by the input data. However,
 //! this is application dependent and your situation may be different.
 
-pub mod chunker;
+pub mod ronomon;
+pub mod v2016;
+pub mod v2020;

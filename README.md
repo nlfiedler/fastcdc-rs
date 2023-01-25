@@ -38,7 +38,7 @@ code snippet is an example:
 let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
 assert!(read_result.is_ok());
 let contents = read_result.unwrap();
-let chunker = chunker::v2016::FastCDC::new(&contents, 16384, 32768, 65536);
+let chunker = fastcdc::v2016::FastCDC::new(&contents, 16384, 32768, 65536);
 let results: Vec<Chunk> = chunker.collect();
 assert_eq!(results.len(), 2);
 assert_eq!(results[0].offset, 0);

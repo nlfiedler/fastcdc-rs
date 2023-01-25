@@ -7,10 +7,10 @@ This file follows the convention described at
 
 ## [Unreleased]
 ### Changed
-- **Breaking:** moved ronomon FastCDC implementation into `chunker::ronomon` module.
+- **Breaking:** moved ronomon FastCDC implementation into `ronomon` module.
 ### Added
-- Canonical implementation of FastCDC from 2016 paper in `chunker::v2016` module.
-- Canonical implementation of FastCDC from 2020 paper in `chunker::v2020` module.
+- Canonical implementation of FastCDC from 2016 paper in `v2016` module.
+- Canonical implementation of FastCDC from 2020 paper in `v2020` module.
 
 ## [2.0.0] - 2023-01-14
 ### Added

@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Nathan Fiedler
 //
 use clap::{arg, command, value_parser, Arg};
-use fastcdc::chunker::ronomon::*;
+use fastcdc::ronomon::*;
 use memmap::MmapOptions;
 use std::fs::File;
 
