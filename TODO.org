@@ -1,8 +1,6 @@
 * Action Items
 ** TODO Rewrite
-*** TODO remove =chunker= level (bring everything up one level)
 *** TODO doc: add migration guide to =README.md=
-*** TODO prune unused dependencies
 *** TODO incorporate some form of streaming support based on =Read=
 **** c.f. https://gitlab.com/asuran-rs/asuran/ (asuran-chunker, uses =fastcdc= with =Read=)
 **** basically just allocate a buffer 2*max and fill it as needed
