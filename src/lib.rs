@@ -104,10 +104,9 @@
 //! chunk sizes in order to improve the overall deduplication ratio.
 //!
 //! Note that changing the minimum chunk size will almost certainly result in
-//! different cut points. This is due to the "randomness" of the gear hash and
-//! the process of calculating the fingerprint of the sliding window. It is best
-//! to pick a minimum chunk size for your application that can remain relevant
-//! indefinitely, lest you produce different sets of chunks for the same data.
+//! different cut points. It is best to pick a minimum chunk size for your
+//! application that can remain relevant indefinitely, lest you produce
+//! different sets of chunks for the same data.
 //!
 //! Similarly, setting the maximum chunk size to be too small may result in cut
 //! points that were determined by the maximum size rather than the data itself.

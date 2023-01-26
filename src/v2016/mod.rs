@@ -576,6 +576,31 @@ mod tests {
     }
 
     #[test]
+    fn test_cut_sekien_16k_nc_0() {
+        let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
+        assert!(read_result.is_ok());
+        let contents = read_result.unwrap();
+        let chunker = FastCDC::with_level(&contents, 4096, 16384, 65535, Normalization::Level0);
+        let mut cursor: u64 = 0;
+        let mut remaining: u64 = contents.len() as u64;
+        let expected: Vec<(u64, u64)> = vec![
+            (221561130519947581, 6634),
+            (15733367461443853673, 59915),
+            (10460176299449652894, 25597),
+            (6197802202431009942, 5237),
+            (2504464741100432583, 12083),
+        ];
+        for (e_hash, e_length) in expected.iter() {
+            let (hash, pos) = chunker.cut(cursor, remaining);
+            assert_eq!(hash, *e_hash);
+            assert_eq!(pos, cursor + e_length);
+            cursor = pos;
+            remaining -= e_length;
+        }
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
     fn test_cut_sekien_16k_nc_3() {
         let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
         assert!(read_result.is_ok());
