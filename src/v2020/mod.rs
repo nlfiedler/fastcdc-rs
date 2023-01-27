@@ -494,7 +494,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "chunker error: {:?}", self)
+        write!(f, "chunker error: {self:?}")
     }
 }
 
@@ -993,6 +993,12 @@ mod tests {
             remaining -= e_length;
         }
         assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn test_error_fmt() {
+        let err = Error::Empty;
+        assert_eq!(format!("{err}"), "chunker error: Empty");
     }
 
     #[test]

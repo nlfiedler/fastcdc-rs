@@ -23,7 +23,7 @@
 //! `hash` field of the `Chunk` struct. While this value has rather low entropy,
 //! it is computationally cost-free and can be put to some use with additional
 //! record keeping.
-//! 
+//!
 //! The `StreamCDC` implementation is similar to `FastCDC` except that it will
 //! read data from a boxed `Read` into an internal buffer of `max_size` and
 //! produce `ChunkData` values from the `Iterator`.
@@ -406,7 +406,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "chunker error: {:?}", self)
+        write!(f, "chunker error: {self:?}")
     }
 }
 
@@ -441,7 +441,7 @@ pub struct ChunkData {
 ///
 /// Note that this struct allocates a `Vec<u8>` of `max_size` bytes to act as a
 /// buffer when reading from the source and finding chunk boundaries.
-/// 
+///
 /// ```no_run
 /// # use std::fs::File;
 /// # use fastcdc::v2016::StreamCDC;
@@ -899,6 +899,12 @@ mod tests {
             remaining -= e_length;
         }
         assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn test_error_fmt() {
+        let err = Error::Empty;
+        assert_eq!(format!("{err}"), "chunker error: Empty");
     }
 
     #[test]
