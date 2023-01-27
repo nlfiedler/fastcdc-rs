@@ -386,7 +386,7 @@ impl<'a> Iterator for FastCDC<'a> {
         // values, as the upper bound doesn't actually seem to get used by `std`
         // and using the actual lower bound is practically guaranteed to require
         // a second capacity growth.
-        let upper_bound = self.source.len() / (self.min_size as usize);
+        let upper_bound = self.source.len() / self.min_size;
         (upper_bound, Some(upper_bound))
     }
 }
@@ -406,7 +406,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "chunker error: {:?}", self)
+        write!(f, "chunker error: {self}")
     }
 }
 

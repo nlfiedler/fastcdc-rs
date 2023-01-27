@@ -232,6 +232,7 @@ const GEAR_LS: [u64; 256] = [
 ];
 
 // Find the next chunk cut point in the source.
+#[allow(clippy::too_many_arguments)]
 fn cut(
     source: &[u8],
     min_size: usize,
@@ -256,11 +257,11 @@ fn cut(
     let mut hash: u64 = 0;
     while index < center / 2 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(GEAR_LS[source[a as usize] as usize]);
+        hash = (hash << 2).wrapping_add(GEAR_LS[source[a] as usize]);
         if (hash & mask_s_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(GEAR[source[(a + 1) as usize] as usize]);
+        hash = hash.wrapping_add(GEAR[source[a + 1] as usize]);
         if (hash & mask_s) == 0 {
             return (hash, a + 1);
         }
@@ -268,11 +269,11 @@ fn cut(
     }
     while index < remaining / 2 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(GEAR_LS[source[a as usize] as usize]);
+        hash = (hash << 2).wrapping_add(GEAR_LS[source[a] as usize]);
         if (hash & mask_l_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(GEAR[source[(a + 1) as usize] as usize]);
+        hash = hash.wrapping_add(GEAR[source[a + 1] as usize]);
         if (hash & mask_l) == 0 {
             return (hash, a + 1);
         }
@@ -473,7 +474,7 @@ impl<'a> Iterator for FastCDC<'a> {
         // values, as the upper bound doesn't actually seem to get used by `std`
         // and using the actual lower bound is practically guaranteed to require
         // a second capacity growth.
-        let upper_bound = self.source.len() / (self.min_size as usize);
+        let upper_bound = self.source.len() / self.min_size;
         (upper_bound, Some(upper_bound))
     }
 }
@@ -493,7 +494,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "chunker error: {:?}", self)
+        write!(f, "chunker error: {self}")
     }
 }
 
