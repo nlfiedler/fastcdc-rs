@@ -5,10 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [3.0.0] - 2023-01-26
 ### Changed
 - **Breaking:** moved ronomon FastCDC implementation into `ronomon` module.
   What was `fastcdc::FastCDC::new()` is now `fastcdc::ronomon::FastCDC::new()`.
+- flokli: remove `mut` from `&self` in `cut()` as it does not need to be mutable.
 ### Added
 - Canonical implementation of FastCDC from 2016 paper in `v2016` module.
 - Canonical implementation of FastCDC from 2020 paper in `v2020` module.

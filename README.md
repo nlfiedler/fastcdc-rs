@@ -1,6 +1,6 @@
 # FastCDC [![docs.rs](https://docs.rs/fastcdc/badge.svg)](https://docs.rs/fastcdc) [![Crates.io](https://img.shields.io/crates/v/fastcdc.svg)](https://crates.io/crates/fastcdc) ![Test](https://github.com/nlfiedler/fastcdc-rs/workflows/Test/badge.svg)
 
-This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm orginally described in 2016 by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
+This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm orginally described in 2016, and later enhanced in 2020, by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
 
 ## Requirements
 
@@ -16,7 +16,7 @@ $ cargo test
 
 ## Example Usage
 
-Examples can be found in the `examples` directory of the source repository, which demonstrate finding chunk boundaries in a given file. There are both streaming and non-streaming examples, where the non-streaming examples can read from arbitrarily large files via the `memmap2` crate.
+Examples can be found in the `examples` directory of the source repository, which demonstrate finding chunk boundaries in a given file. There are both streaming and non-streaming examples, where the non-streaming examples use the `memmap2` crate to read large files efficiently.
 
 ```shell
 $ cargo run --example v2020 -- --size 16384 test/fixtures/SekienAkashita.jpg
@@ -29,20 +29,16 @@ hash=4509236223063678303 offset=66549 size=18217
 hash=2504464741100432583 offset=84766 size=24700
 ```
 
-The unit tests also have some short examples of using the chunkers, of which this
-code snippet is an example:
+### Non-streaming
+
+An example using `FastCDC` to find chunk boundaries in data loaded into memory:
 
 ```rust
-let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
-assert!(read_result.is_ok());
-let contents = read_result.unwrap();
+let contents = std::fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 let chunker = fastcdc::v2020::FastCDC::new(&contents, 16384, 32768, 65536);
-let results: Vec<Chunk> = chunker.collect();
-assert_eq!(results.len(), 2);
-assert_eq!(results[0].offset, 0);
-assert_eq!(results[0].length, 66549);
-assert_eq!(results[1].offset, 66549);
-assert_eq!(results[1].length, 42917);
+for chunk in chunker {
+    println!("offset={} length={}", chunk.offset, chunk.length);
+}
 ```
 
 ### Streaming
@@ -50,10 +46,8 @@ assert_eq!(results[1].length, 42917);
 Both the `v2016` and `v2020` modules have a streaming version of FastCDC named `StreamCDC`, which takes a boxed `Read` and uses a byte vector with capacity equal to the specified maximum chunk size.
 
 ```rust
-use std::fs::File;
-use fastcdc::v2020::StreamCDC;
-let source = File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-let chunker = StreamCDC::new(Box::new(source), 4096, 16384, 65535);
+let source = std::fs::File::open("test/fixtures/SekienAkashita.jpg").unwrap();
+let chunker = fastcdc::v2020::StreamCDC::new(Box::new(source), 4096, 16384, 65535);
 for result in chunker {
     let chunk = result.unwrap();
     println!("offset={} length={}", chunk.offset, chunk.length);
@@ -80,7 +74,7 @@ The cut points produced will be identical to previous releases as the `ronomon` 
 
 ## Reference Material
 
-The original algorithm is described in [FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), while the improved "rolling two bytes each time" version is detailed in [The Design of Fast Content-Defined Chunking for Data Deduplication Based Storage Systems](https://ieeexplore.ieee.org/document/9055082).
+The original algorithm from 2016 is described in [FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), while the improved "rolling two bytes each time" version from 2020 is detailed in [The Design of Fast Content-Defined Chunking for Data Deduplication Based Storage Systems](https://ieeexplore.ieee.org/document/9055082).
 
 ## Other Implementations
 
