@@ -2,12 +2,11 @@
 // Copyright (c) 2023 Nathan Fiedler
 //
 use clap::{arg, command, value_parser, Arg};
-use fastcdc::ronomon::*;
-use memmap2::Mmap;
+use fastcdc::v2016::*;
 use std::fs::File;
 
 fn main() {
-    let matches = command!("Example of using ronomon chunker.")
+    let matches = command!("Example of using v2016 streaming chunker.")
         .about("Finds the content-defined chunk boundaries of a file.")
         .arg(
             arg!(
@@ -23,14 +22,14 @@ fn main() {
         )
         .get_matches();
     let size = matches.get_one::<u32>("size").unwrap_or(&131072);
-    let avg_size = *size as usize;
+    let avg_size = *size;
     let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).expect("cannot open file!");
-    let mmap = unsafe { Mmap::map(&file).expect("cannot create mmap?") };
     let min_size = avg_size / 4;
     let max_size = avg_size * 4;
-    let chunker = FastCDC::new(&mmap[..], min_size, avg_size, max_size);
-    for entry in chunker {
+    let chunker = StreamCDC::new(Box::new(file), min_size, avg_size, max_size);
+    for result in chunker {
+        let entry = result.expect("failed to read chunk");
         println!(
             "hash={} offset={} size={}",
             entry.hash, entry.offset, entry.length

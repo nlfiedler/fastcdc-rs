@@ -16,9 +16,7 @@ $ cargo test
 
 ## Example Usage
 
-Examples can be found in the `examples` directory of the source repository,
-which demonstrate reading files of arbitrary size into a memory-mapped buffer
-and passing them through the different chunker implementations.
+Examples can be found in the `examples` directory of the source repository, which demonstrate finding chunk boundaries in a given file. There are both streaming and non-streaming examples, where the non-streaming examples can read from arbitrarily large files via the `memmap2` crate.
 
 ```shell
 $ cargo run --example v2020 -- --size 16384 test/fixtures/SekienAkashita.jpg
@@ -47,6 +45,21 @@ assert_eq!(results[1].offset, 66549);
 assert_eq!(results[1].length, 42917);
 ```
 
+### Streaming
+
+Both the `v2016` and `v2020` modules have a streaming version of FastCDC named `StreamCDC`, which takes a boxed `Read` and uses a byte vector with capacity equal to the specified maximum chunk size.
+
+```rust
+use std::fs::File;
+use fastcdc::v2020::StreamCDC;
+let source = File::open("test/fixtures/SekienAkashita.jpg").unwrap();
+let chunker = StreamCDC::new(Box::new(source), 4096, 16384, 65535);
+for result in chunker {
+    let chunk = result.unwrap();
+    println!("offset={} length={}", chunk.offset, chunk.length);
+}
+```
+
 ## Migration from pre-3.0
 
 If you were using a release of this crate from before the 3.0 release, you will need to make a small adjustment to continue using the same implemetation as before.
@@ -54,17 +67,12 @@ If you were using a release of this crate from before the 3.0 release, you will 
 Before the 3.0 release:
 
 ```rust
-use fastcdc::ronomon as fastcdc;
-use std::fs;
-let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 let chunker = fastcdc::FastCDC::new(&contents, 8192, 16384, 32768);
 ```
 
 After the 3.0 release:
 
 ```rust
-use std::fs;
-let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
 let chunker = fastcdc::ronomon::FastCDC::new(&contents, 8192, 16384, 32768);
 ```
 

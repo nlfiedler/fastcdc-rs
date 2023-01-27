@@ -8,9 +8,12 @@ This file follows the convention described at
 ## [Unreleased]
 ### Changed
 - **Breaking:** moved ronomon FastCDC implementation into `ronomon` module.
+  What was `fastcdc::FastCDC::new()` is now `fastcdc::ronomon::FastCDC::new()`.
 ### Added
 - Canonical implementation of FastCDC from 2016 paper in `v2016` module.
 - Canonical implementation of FastCDC from 2020 paper in `v2020` module.
+- `Normalization` enum to set the normalized chunking for `v2016` and `v2020` chunkers.
+- `StreamCDC`, streaming version of `FastCDC`, in `v2016` and `v2020` modules.
 
 ## [2.0.0] - 2023-01-14
 ### Added

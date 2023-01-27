@@ -5,7 +5,7 @@
 //! This module implements the canonical FastCDC algorithm as described in the
 //! [paper](https://ieeexplore.ieee.org/document/9055082) by Wen Xia, et al., in
 //! 2020.
-//! 
+//!
 //! The algorithm incorporates a simplified hash judgement using the fast Gear
 //! hash, sub-minimum chunk cut-point skipping, normalized chunking to produce
 //! chunks of a more consistent length, and "rolling two bytes each time".
@@ -25,6 +25,12 @@
 //! `hash` field of the `Chunk` struct. While this value has rather low entropy,
 //! it is computationally cost-free and can be put to some use with additional
 //! record keeping.
+//! 
+//! The `StreamCDC` implementation is similar to `FastCDC` except that it will
+//! read data from a boxed `Read` into an internal buffer of `max_size` and
+//! produce `ChunkData` values from the `Iterator`.
+use std::fmt;
+use std::io::Read;
 
 /// Smallest acceptable value for the minimum chunk size.
 pub const MINIMUM_MIN: u32 = 64;
@@ -225,9 +231,61 @@ const GEAR_LS: [u64; 256] = [
     0x1c7c8443a6c28826, 0xde29a1b0d7e34458, 0xc3b061a7e2d8bbb6, 0x557a56548a2a09c2
 ];
 
+// Find the next chunk cut point in the source.
+fn cut(
+    source: &[u8],
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
+    mask_s: u64,
+    mask_l: u64,
+    mask_s_ls: u64,
+    mask_l_ls: u64,
+) -> (u64, usize) {
+    let mut remaining = source.len();
+    if remaining <= min_size {
+        return (0, remaining);
+    }
+    let mut center = avg_size;
+    if remaining > max_size {
+        remaining = max_size;
+    } else if remaining < center {
+        center = remaining;
+    }
+    let mut index = min_size / 2;
+    let mut hash: u64 = 0;
+    while index < center / 2 {
+        let a = index * 2;
+        hash = (hash << 2).wrapping_add(GEAR_LS[source[a as usize] as usize]);
+        if (hash & mask_s_ls) == 0 {
+            return (hash, a);
+        }
+        hash = hash.wrapping_add(GEAR[source[(a + 1) as usize] as usize]);
+        if (hash & mask_s) == 0 {
+            return (hash, a + 1);
+        }
+        index += 1;
+    }
+    while index < remaining / 2 {
+        let a = index * 2;
+        hash = (hash << 2).wrapping_add(GEAR_LS[source[a as usize] as usize]);
+        if (hash & mask_l_ls) == 0 {
+            return (hash, a);
+        }
+        hash = hash.wrapping_add(GEAR[source[(a + 1) as usize] as usize]);
+        if (hash & mask_l) == 0 {
+            return (hash, a + 1);
+        }
+        index += 1;
+    }
+    // If all else fails, return the largest chunk. This will happen with
+    // pathological data, such as all zeroes.
+    (hash, remaining)
+}
+
 ///
 /// The level for the normalized chunking used by FastCDC.
-/// 
+///
 /// Normalized chunking "generates chunks whose sizes are normalized to a
 /// specified region centered at the expected chunk size," as described in
 /// section 4.4 of the FastCDC 2016 paper.
@@ -270,14 +328,14 @@ pub struct Chunk {
     /// The gear hash value as of the end of the chunk.
     pub hash: u64,
     /// Starting byte position within the source.
-    pub offset: u64,
+    pub offset: usize,
     /// Length of the chunk in bytes.
-    pub length: u32,
+    pub length: usize,
 }
 
 ///
 /// The FastCDC chunker implementation from 2020.
-/// 
+///
 /// Use `new` to construct an instance, and then iterate over the `Chunk`s via
 /// the `Iterator` trait.
 ///
@@ -302,11 +360,11 @@ pub struct Chunk {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FastCDC<'a> {
     source: &'a [u8],
-    processed: u64,
-    remaining: u64,
-    min_size: u64,
-    avg_size: u64,
-    max_size: u64,
+    processed: usize,
+    remaining: usize,
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
     mask_s: u64,
     mask_l: u64,
     mask_s_ls: u64,
@@ -343,14 +401,13 @@ impl<'a> FastCDC<'a> {
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
-        let length = source.len() as u64;
         Self {
             source,
             processed: 0,
-            remaining: length,
-            min_size: min_size as u64,
-            avg_size: avg_size as u64,
-            max_size: max_size as u64,
+            remaining: source.len(),
+            min_size: min_size as usize,
+            avg_size: avg_size as usize,
+            max_size: max_size as usize,
             mask_s,
             mask_l,
             mask_s_ls: mask_s << 1,
@@ -371,45 +428,19 @@ impl<'a> FastCDC<'a> {
     /// minimum chunk size, at which point this function returns a hash of 0 and
     /// the cut point is the end of the source data.
     ///
-    pub fn cut(&self, start: u64, mut remaining: u64) -> (u64, u64) {
-        if remaining <= self.min_size {
-            return (0, start + remaining);
-        }
-        let mut center = self.avg_size;
-        if remaining > self.max_size {
-            remaining = self.max_size;
-        } else if remaining < center {
-            center = remaining;
-        }
-        let mut index = self.min_size / 2;
-        let mut hash: u64 = 0;
-        while index < center / 2 {
-            let a = index * 2 + start;
-            hash = (hash << 2).wrapping_add(GEAR_LS[self.source[a as usize] as usize]);
-            if (hash & self.mask_s_ls) == 0 {
-                return (hash, a);
-            }
-            hash = hash.wrapping_add(GEAR[self.source[(a + 1) as usize] as usize]);
-            if (hash & self.mask_s) == 0 {
-                return (hash, a + 1);
-            }
-            index += 1;
-        }
-        while index < remaining / 2 {
-            let a = index * 2 + start;
-            hash = (hash << 2).wrapping_add(GEAR_LS[self.source[a as usize] as usize]);
-            if (hash & self.mask_l_ls) == 0 {
-                return (hash, a);
-            }
-            hash = hash.wrapping_add(GEAR[self.source[(a + 1) as usize] as usize]);
-            if (hash & self.mask_l) == 0 {
-                return (hash, a + 1);
-            }
-            index += 1;
-        }
-        // If all else fails, return the largest chunk. This will happen with
-        // pathological data, such as all zeroes.
-        (hash, start + remaining)
+    pub fn cut(&self, start: usize, remaining: usize) -> (u64, usize) {
+        let end = start + remaining;
+        let (hash, count) = cut(
+            &self.source[start..end],
+            self.min_size,
+            self.avg_size,
+            self.max_size,
+            self.mask_s,
+            self.mask_l,
+            self.mask_s_ls,
+            self.mask_l_ls,
+        );
+        (hash, start + count)
     }
 }
 
@@ -431,7 +462,7 @@ impl<'a> Iterator for FastCDC<'a> {
                 Some(Chunk {
                     hash,
                     offset,
-                    length: length as u32,
+                    length,
                 })
             }
         }
@@ -448,6 +479,222 @@ impl<'a> Iterator for FastCDC<'a> {
 }
 
 ///
+/// The error type returned from the `StreamCDC` iterator.
+///
+#[derive(Debug)]
+pub enum Error {
+    /// End of source data reached.
+    Empty,
+    /// An I/O error occurred.
+    IoError(std::io::Error),
+    /// Something unexpected happened.
+    Other(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "chunker error: {:?}", self)
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::IoError(error)
+    }
+}
+
+///
+/// Represents a chunk returned from the StreamCDC iterator.
+///
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct ChunkData {
+    /// The gear hash value as of the end of the chunk.
+    pub hash: u64,
+    /// Starting byte position within the source.
+    pub offset: u64,
+    /// Length of the chunk in bytes.
+    pub length: usize,
+    /// Source bytes contained in this chunk.
+    pub data: Vec<u8>,
+}
+
+///
+/// The FastCDC chunker implementation from 2016 with streaming support.
+///
+/// Use `new` to construct an instance, and then iterate over the `ChunkData`s
+/// via the `Iterator` trait.
+///
+/// Note that this struct allocates a `Vec<u8>` of `max_size` bytes to act as a
+/// buffer when reading from the source and finding chunk boundaries.
+///
+/// ```no_run
+/// # use std::fs::File;
+/// # use fastcdc::v2020::StreamCDC;
+/// let source = File::open("test/fixtures/SekienAkashita.jpg").unwrap();
+/// let chunker = StreamCDC::new(Box::new(source), 4096, 16384, 65535);
+/// for result in chunker {
+///     let chunk = result.unwrap();
+///     println!("offset={} length={}", chunk.offset, chunk.length);
+/// }
+/// ```
+///
+pub struct StreamCDC {
+    /// Buffer of data from source for finding cut points.
+    buffer: Vec<u8>,
+    /// Maximum capacity of the buffer (always `max_size`).
+    capacity: usize,
+    /// Number of relevant bytes in the `buffer`.
+    length: usize,
+    /// Source from which data is read into `buffer`.
+    source: Box<dyn Read>,
+    /// Number of bytes read from the source so far.
+    processed: u64,
+    /// True when the source produces no more data.
+    eof: bool,
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
+    mask_s: u64,
+    mask_l: u64,
+    mask_s_ls: u64,
+    mask_l_ls: u64,
+}
+
+impl StreamCDC {
+    ///
+    /// Construct a `StreamCDC` that will process bytes from the given source.
+    ///
+    /// Uses chunk size normalization level 1 by default.
+    ///
+    pub fn new(source: Box<dyn Read>, min_size: u32, avg_size: u32, max_size: u32) -> Self {
+        StreamCDC::with_level(source, min_size, avg_size, max_size, Normalization::Level1)
+    }
+
+    ///
+    /// Create a new `StreamCDC` with the given normalization level.
+    ///
+    pub fn with_level(
+        source: Box<dyn Read>,
+        min_size: u32,
+        avg_size: u32,
+        max_size: u32,
+        level: Normalization,
+    ) -> Self {
+        assert!(min_size >= MINIMUM_MIN);
+        assert!(min_size <= MINIMUM_MAX);
+        assert!(avg_size >= AVERAGE_MIN);
+        assert!(avg_size <= AVERAGE_MAX);
+        assert!(max_size >= MAXIMUM_MIN);
+        assert!(max_size <= MAXIMUM_MAX);
+        let bits = logarithm2(avg_size);
+        let normalization = level.bits();
+        let mask_s = MASKS[(bits + normalization) as usize];
+        let mask_l = MASKS[(bits - normalization) as usize];
+        Self {
+            buffer: vec![0_u8; max_size as usize],
+            capacity: max_size as usize,
+            length: 0,
+            source,
+            eof: false,
+            processed: 0,
+            min_size: min_size as usize,
+            avg_size: avg_size as usize,
+            max_size: max_size as usize,
+            mask_s,
+            mask_l,
+            mask_s_ls: mask_s << 1,
+            mask_l_ls: mask_l << 1,
+        }
+    }
+
+    /// Fill the buffer with data from the source, returning the number of bytes
+    /// read (zero if end of source has been reached).
+    fn fill_buffer(&mut self) -> Result<usize, Error> {
+        // this code originally copied from asuran crate
+        if self.eof {
+            Ok(0)
+        } else {
+            let mut all_bytes_read = 0;
+            while !self.eof && self.length < self.capacity {
+                let bytes_read = self.source.read(&mut self.buffer[self.length..])?;
+                if bytes_read == 0 {
+                    self.eof = true;
+                } else {
+                    self.length += bytes_read;
+                    all_bytes_read += bytes_read;
+                }
+            }
+            Ok(all_bytes_read)
+        }
+    }
+
+    /// Drains a specified number of bytes from the buffer, then resizes the
+    /// buffer back to `capacity` size in preparation for further reads.
+    fn drain_bytes(&mut self, count: usize) -> Result<Vec<u8>, Error> {
+        // this code originally copied from asuran crate
+        if count > self.length {
+            Err(Error::Other(format!(
+                "drain_bytes() called with count larger than length: {} > {}",
+                count, self.length
+            )))
+        } else {
+            let data = self.buffer.drain(..count).collect::<Vec<u8>>();
+            self.length -= count;
+            self.buffer.resize(self.capacity, 0_u8);
+            Ok(data)
+        }
+    }
+
+    /// Find the next chunk in the source. If the end of the source has been
+    /// reached, returns `Error::Empty` as the error.
+    fn read_chunk(&mut self) -> Result<ChunkData, Error> {
+        self.fill_buffer()?;
+        if self.length == 0 {
+            Err(Error::Empty)
+        } else {
+            let (hash, count) = cut(
+                &self.buffer[..self.length],
+                self.min_size,
+                self.avg_size,
+                self.max_size,
+                self.mask_s,
+                self.mask_l,
+                self.mask_s_ls,
+                self.mask_l_ls,
+            );
+            if count == 0 {
+                Err(Error::Empty)
+            } else {
+                let offset = self.processed;
+                self.processed += count as u64;
+                let data = self.drain_bytes(count)?;
+                Ok(ChunkData {
+                    hash,
+                    offset,
+                    length: count,
+                    data,
+                })
+            }
+        }
+    }
+}
+
+impl Iterator for StreamCDC {
+    type Item = Result<ChunkData, Error>;
+
+    fn next(&mut self) -> Option<Result<ChunkData, Error>> {
+        let slice = self.read_chunk();
+        if let Err(Error::Empty) = slice {
+            None
+        } else {
+            Some(slice)
+        }
+    }
+}
+
+///
 /// Base-2 logarithm function for unsigned 32-bit integers.
 ///
 fn logarithm2(value: u32) -> u32 {
@@ -457,7 +704,8 @@ fn logarithm2(value: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use md5::{Digest, Md5};
+    use std::fs::{self, File};
 
     #[test]
     fn test_logarithm2() {
@@ -556,7 +804,7 @@ mod tests {
         // for all zeros, always returns chunks of maximum size
         let array = [0u8; 10240];
         let chunker = FastCDC::new(&array, 64, 256, 1024);
-        let mut cursor: u64 = 0;
+        let mut cursor: usize = 0;
         for _ in 0..10 {
             let (hash, pos) = chunker.cut(cursor, 10240 - cursor);
             assert_eq!(hash, 14169102344523991076);
@@ -574,9 +822,9 @@ mod tests {
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
         let chunker = FastCDC::new(&contents, 4096, 16384, 65535);
-        let mut cursor: u64 = 0;
-        let mut remaining: u64 = contents.len() as u64;
-        let expected: Vec<(u64, u64)> = vec![
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> = vec![
             (17968276318003433923, 21325),
             (8197189939299398838, 17140),
             (13019990849178155730, 28084),
@@ -599,9 +847,9 @@ mod tests {
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
         let chunker = FastCDC::new(&contents, 8192, 32768, 131072);
-        let mut cursor: u64 = 0;
-        let mut remaining: u64 = contents.len() as u64;
-        let expected: Vec<(u64, u64)> =
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> =
             vec![(15733367461443853673, 66549), (6321136627705800457, 42917)];
         for (e_hash, e_length) in expected.iter() {
             let (hash, pos) = chunker.cut(cursor, remaining);
@@ -619,9 +867,9 @@ mod tests {
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
         let chunker = FastCDC::new(&contents, 16384, 65536, 262144);
-        let mut cursor: u64 = 0;
-        let mut remaining: u64 = contents.len() as u64;
-        let expected: Vec<(u64, u64)> = vec![(2504464741100432583, 109466)];
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> = vec![(2504464741100432583, 109466)];
         for (e_hash, e_length) in expected.iter() {
             let (hash, pos) = chunker.cut(cursor, remaining);
             assert_eq!(hash, *e_hash);
@@ -632,29 +880,67 @@ mod tests {
         assert_eq!(remaining, 0);
     }
 
+    struct ExpectedChunk {
+        hash: u64,
+        offset: u64,
+        length: usize,
+        digest: String,
+    }
+
     #[test]
     fn test_iter_sekien_16k_chunks() {
         let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
+        // The digest values are not needed here, but they serve to validate
+        // that the streaming version tested below is returning the correct
+        // chunk data on each iteration.
+        let expected_chunks = vec![
+            ExpectedChunk {
+                hash: 17968276318003433923,
+                offset: 0,
+                length: 21325,
+                digest: "2bb52734718194617c957f5e07ee6054".into(),
+            },
+            ExpectedChunk {
+                hash: 8197189939299398838,
+                offset: 21325,
+                length: 17140,
+                digest: "badfb0757fe081c20336902e7131f768".into(),
+            },
+            ExpectedChunk {
+                hash: 13019990849178155730,
+                offset: 38465,
+                length: 28084,
+                digest: "18412d7414de6eb42f638351711f729d".into(),
+            },
+            ExpectedChunk {
+                hash: 4509236223063678303,
+                offset: 66549,
+                length: 18217,
+                digest: "04fe1405fc5f960363bfcd834c056407".into(),
+            },
+            ExpectedChunk {
+                hash: 2504464741100432583,
+                offset: 84766,
+                length: 24700,
+                digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
+            },
+        ];
         let chunker = FastCDC::new(&contents, 4096, 16384, 65535);
-        let results: Vec<Chunk> = chunker.collect();
-        assert_eq!(results.len(), 5);
-        assert_eq!(results[0].hash, 17968276318003433923);
-        assert_eq!(results[0].offset, 0);
-        assert_eq!(results[0].length, 21325);
-        assert_eq!(results[1].hash, 8197189939299398838);
-        assert_eq!(results[1].offset, 21325);
-        assert_eq!(results[1].length, 17140);
-        assert_eq!(results[2].hash, 13019990849178155730);
-        assert_eq!(results[2].offset, 38465);
-        assert_eq!(results[2].length, 28084);
-        assert_eq!(results[3].hash, 4509236223063678303);
-        assert_eq!(results[3].offset, 66549);
-        assert_eq!(results[3].length, 18217);
-        assert_eq!(results[4].hash, 2504464741100432583);
-        assert_eq!(results[4].offset, 84766);
-        assert_eq!(results[4].length, 24700);
+        let mut index = 0;
+        for chunk in chunker {
+            assert_eq!(chunk.hash, expected_chunks[index].hash);
+            assert_eq!(chunk.offset, expected_chunks[index].offset as usize);
+            assert_eq!(chunk.length, expected_chunks[index].length);
+            let mut hasher = Md5::new();
+            hasher.update(&contents[chunk.offset..chunk.offset + chunk.length]);
+            let table = hasher.finalize();
+            let digest = format!("{:x}", table);
+            assert_eq!(digest, expected_chunks[index].digest);
+            index += 1;
+        }
+        assert_eq!(index, 5);
     }
 
     #[test]
@@ -663,9 +949,9 @@ mod tests {
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
         let chunker = FastCDC::with_level(&contents, 4096, 16384, 65535, Normalization::Level0);
-        let mut cursor: u64 = 0;
-        let mut remaining: u64 = contents.len() as u64;
-        let expected: Vec<(u64, u64)> = vec![
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> = vec![
             (443122261039895162, 6634),
             (15733367461443853673, 59915),
             (10460176299449652894, 25597),
@@ -688,9 +974,9 @@ mod tests {
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
         let chunker = FastCDC::with_level(&contents, 8192, 16384, 32768, Normalization::Level3);
-        let mut cursor: u64 = 0;
-        let mut remaining: u64 = contents.len() as u64;
-        let expected: Vec<(u64, u64)> = vec![
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> = vec![
             (10718006254707412376, 17350),
             (13104072099671895560, 19911),
             (12322483109039221194, 17426),
@@ -706,5 +992,61 @@ mod tests {
             remaining -= e_length;
         }
         assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn test_stream_sekien_16k_chunks() {
+        let file_result = File::open("test/fixtures/SekienAkashita.jpg");
+        assert!(file_result.is_ok());
+        let file = file_result.unwrap();
+        // The set of expected results should match the non-streaming version.
+        let expected_chunks = vec![
+            ExpectedChunk {
+                hash: 17968276318003433923,
+                offset: 0,
+                length: 21325,
+                digest: "2bb52734718194617c957f5e07ee6054".into(),
+            },
+            ExpectedChunk {
+                hash: 8197189939299398838,
+                offset: 21325,
+                length: 17140,
+                digest: "badfb0757fe081c20336902e7131f768".into(),
+            },
+            ExpectedChunk {
+                hash: 13019990849178155730,
+                offset: 38465,
+                length: 28084,
+                digest: "18412d7414de6eb42f638351711f729d".into(),
+            },
+            ExpectedChunk {
+                hash: 4509236223063678303,
+                offset: 66549,
+                length: 18217,
+                digest: "04fe1405fc5f960363bfcd834c056407".into(),
+            },
+            ExpectedChunk {
+                hash: 2504464741100432583,
+                offset: 84766,
+                length: 24700,
+                digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
+            },
+        ];
+        let chunker = StreamCDC::new(Box::new(file), 4096, 16384, 65535);
+        let mut index = 0;
+        for result in chunker {
+            assert!(result.is_ok());
+            let chunk = result.unwrap();
+            assert_eq!(chunk.hash, expected_chunks[index].hash);
+            assert_eq!(chunk.offset, expected_chunks[index].offset);
+            assert_eq!(chunk.length, expected_chunks[index].length);
+            let mut hasher = Md5::new();
+            hasher.update(&chunk.data);
+            let table = hasher.finalize();
+            let digest = format!("{:x}", table);
+            assert_eq!(digest, expected_chunks[index].digest);
+            index += 1;
+        }
+        assert_eq!(index, 5);
     }
 }

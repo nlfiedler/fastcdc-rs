@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Nathan Fiedler
+// Copyright (c) 2023 Nathan Fiedler
 //
 
 //! This crate implements multiple versions of the FastCDC content defined
@@ -55,7 +55,7 @@
 //! For a canonical implementation of the algorithm as described in the 2020
 //! paper, see the `v2020` crate. This implementation produces identical cut
 //! points as the 2016 version, but does so a bit faster.
-//! 
+//!
 //! If you are using this crate for the first time, the `v2020` implementation
 //! would be the most approprite. It uses 64-bit hash values and tends to be
 //! faster than both the `ronomon` and `v2016` versions.
@@ -112,6 +112,16 @@
 //! points that were determined by the maximum size rather than the data itself.
 //! Ideally you want cut points that are determined by the input data. However,
 //! this is application dependent and your situation may be different.
+//!
+//! ## Large Data
+//!
+//! If processing very large files, the streaming version of the chunkers in the
+//! `v2016` and `v2020` modules may be a suitable approach. They both allocate a
+//! byte vector equal to the maximum chunk size, draining and resizing the
+//! vector as chunks are found. However, using a crate such as `memmap2` can be
+//! significantly faster than the streaming chunkers. See the examples in the
+//! `examples` directory for how to use the streaming versions as-is, versus the
+//! non-streaming chunkers which read from a memory-mapped file.
 
 pub mod ronomon;
 pub mod v2016;

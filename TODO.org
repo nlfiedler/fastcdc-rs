@@ -1,16 +1,11 @@
 * Action Items
-** TODO Rewrite
-*** TODO incorporate some form of streaming support based on =Read=
-**** c.f. https://gitlab.com/asuran-rs/asuran/ (asuran-chunker, uses =fastcdc= with =Read=)
-**** basically just allocate a buffer 2*max and fill it as needed
-**** c.f. https://github.com/jotfs/fastcdc-go/blob/master/fastcdc.go
-**** c.f. https://github.com/wxiacode/Duplicacy-FastCDC/blob/master/src/duplicacy_chunkmaker.go
-*** TODO test: check if ronomon version of fastcdc produces same results as rust version
-**** if so, maybe make this a requirement of the rust version of ronomon
-** timing on =MSEdge-Win10.ova= with 4mb chunks
-*** run with =--release= flag 7 times, drop low/high, average remaining 5
-| chunker | avg time |
-|---------+----------|
-| v2020   |    3.437 |
-| ronomon |    4.085 |
-| v2016   |    4.266 |
+** Time for examples to chunk =MSEdge-Win10.ova= with 4mb chunks
+*** use =time cargo run --release ...=, 7 times, drop low/high, average remaining 5
+*** note that the non-streaming examples use =memmap2= to read from the file as a slice
+| chunker    | avg time |
+|------------+----------|
+| v2020      |    3.437 |
+| ronomon    |    4.085 |
+| v2016      |    4.266 |
+| stream2020 |    5.847 |
+| stream2016 |    6.659 |

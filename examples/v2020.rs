@@ -3,7 +3,7 @@
 //
 use clap::{arg, command, value_parser, Arg};
 use fastcdc::v2020::*;
-use memmap::MmapOptions;
+use memmap2::Mmap;
 use std::fs::File;
 
 fn main() {
@@ -26,7 +26,7 @@ fn main() {
     let avg_size = *size;
     let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).expect("cannot open file!");
-    let mmap = unsafe { MmapOptions::new().map(&file).expect("cannot create mmap?") };
+    let mmap = unsafe { Mmap::map(&file).expect("cannot create mmap?") };
     let min_size = avg_size / 4;
     let max_size = avg_size * 4;
     let chunker = FastCDC::new(&mmap[..], min_size, avg_size, max_size);
