@@ -19,11 +19,11 @@ fn main() {
     for index in 0..=255 {
         seed.fill(index);
         let mut hasher = Md5::new();
-        hasher.update(&seed);
+        hasher.update(seed);
         let digest = hasher.finalize();
         let mut rdr = Cursor::new(&digest[..]);
         let mut num: u64 = rdr.read_u64::<BigEndian>().unwrap();
-        num = num << 1;
+        num <<= 1;
         table.push_str(&format!(" {:#018x},", num));
         if index % 4 == 3 {
             table.push('\n');

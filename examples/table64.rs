@@ -20,7 +20,7 @@ fn generate() -> String {
     for index in 0..=255 {
         seed.fill(index);
         let mut hasher = Md5::new();
-        hasher.update(&seed);
+        hasher.update(seed);
         let table = hasher.finalize();
         let mut rdr = Cursor::new(&table[..]);
         let num: u64 = rdr.read_u64::<BigEndian>().unwrap();

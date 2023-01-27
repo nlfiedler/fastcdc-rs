@@ -30,7 +30,7 @@ fn generate() -> String {
     let mut rdr = Cursor::new(&table[..]);
     for index in 1..257 {
         let mut num: u32 = rdr.read_u32::<BigEndian>().unwrap();
-        num = num % MAX_VALUE;
+        num %= MAX_VALUE;
         result.push_str(&format!(" {:#010x},", num));
         if index % 8 == 0 {
             result.push('\n');
