@@ -522,7 +522,7 @@ pub struct ChunkData {
 }
 
 ///
-/// The FastCDC chunker implementation from 2016 with streaming support.
+/// The FastCDC chunker implementation from 2020 with streaming support.
 ///
 /// Use `new` to construct an instance, and then iterate over the `ChunkData`s
 /// via the `Iterator` trait.
