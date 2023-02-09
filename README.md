@@ -1,6 +1,6 @@
 # FastCDC [![docs.rs](https://docs.rs/fastcdc/badge.svg)](https://docs.rs/fastcdc) [![Crates.io](https://img.shields.io/crates/v/fastcdc.svg)](https://crates.io/crates/fastcdc) ![Test](https://github.com/nlfiedler/fastcdc-rs/workflows/Test/badge.svg)
 
-This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm orginally described in 2016, and later enhanced in 2020, by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
+This crate contains multiple implementations of the "FastCDC" content defined chunking algorithm originally described in 2016, and later enhanced in 2020, by Wen Xia, et al. A critical aspect of its behavior is that it returns exactly the same results for the same input. To learn more about content defined chunking and its applications, see the reference material linked below.
 
 ## Requirements
 
@@ -56,7 +56,7 @@ for result in chunker {
 
 ## Migration from pre-3.0
 
-If you were using a release of this crate from before the 3.0 release, you will need to make a small adjustment to continue using the same implemetation as before.
+If you were using a release of this crate from before the 3.0 release, you will need to make a small adjustment to continue using the same implementation as before.
 
 Before the 3.0 release:
 

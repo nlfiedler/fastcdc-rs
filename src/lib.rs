@@ -16,7 +16,7 @@
 //!
 //! If you were using a release of this crate from before the 3.0 release, you
 //! will need to make a small adjustment to continue using the same
-//! implemetation as before.
+//! implementation as before.
 //!
 //! Before the 3.0 release:
 //!
@@ -57,7 +57,7 @@
 //! points as the 2016 version, but does so a bit faster.
 //!
 //! If you are using this crate for the first time, the `v2020` implementation
-//! would be the most approprite. It uses 64-bit hash values and tends to be
+//! would be the most appropriate. It uses 64-bit hash values and tends to be
 //! faster than both the `ronomon` and `v2016` versions.
 //!
 //! ## Examples
