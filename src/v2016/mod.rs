@@ -418,6 +418,16 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::IoError(ioerr) => ioerr,
+            Error::Empty => Self::from(std::io::ErrorKind::UnexpectedEof),
+            Error::Other(str) => Self::new(std::io::ErrorKind::Other, str),
+        }
+    }
+}
+
 ///
 /// Represents a chunk returned from the StreamCDC iterator.
 ///
