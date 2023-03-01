@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [3.0.1] - 2023-02-28
+### Added
+- nagy: Support conversion to `std::io::Error` in streaming chunkers.
+### Fixed
+- ariel-miculas: doc: fix year in `fastcdc::v2020`
+
 ## [3.0.0] - 2023-01-26
 ### Changed
 - **Breaking:** moved ronomon FastCDC implementation into `ronomon` module.
