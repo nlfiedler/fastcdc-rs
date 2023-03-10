@@ -27,7 +27,7 @@ fn main() {
     let file = File::open(filename).expect("cannot open file!");
     let min_size = avg_size / 4;
     let max_size = avg_size * 4;
-    let chunker = StreamCDC::new(Box::new(file), min_size, avg_size, max_size);
+    let chunker = StreamCDC::new(file, min_size, avg_size, max_size);
     for result in chunker {
         let entry = result.expect("failed to read chunk");
         println!(

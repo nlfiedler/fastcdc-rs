@@ -25,8 +25,8 @@
 //! record keeping.
 //!
 //! The `StreamCDC` implementation is similar to `FastCDC` except that it will
-//! read data from a boxed `Read` into an internal buffer of `max_size` and
-//! produce `ChunkData` values from the `Iterator`.
+//! read data from a `Read` into an internal buffer of `max_size` and produce
+//! `ChunkData` values from the `Iterator`.
 use std::fmt;
 use std::io::Read;
 
@@ -456,14 +456,14 @@ pub struct ChunkData {
 /// # use std::fs::File;
 /// # use fastcdc::v2016::StreamCDC;
 /// let source = File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-/// let chunker = StreamCDC::new(Box::new(source), 4096, 16384, 65535);
+/// let chunker = StreamCDC::new(source, 4096, 16384, 65535);
 /// for result in chunker {
 ///     let chunk = result.unwrap();
 ///     println!("offset={} length={}", chunk.offset, chunk.length);
 /// }
 /// ```
 ///
-pub struct StreamCDC {
+pub struct StreamCDC<R: Read> {
     /// Buffer of data from source for finding cut points.
     buffer: Vec<u8>,
     /// Maximum capacity of the buffer (always `max_size`).
@@ -471,7 +471,7 @@ pub struct StreamCDC {
     /// Number of relevant bytes in the `buffer`.
     length: usize,
     /// Source from which data is read into `buffer`.
-    source: Box<dyn Read>,
+    source: R,
     /// Number of bytes read from the source so far.
     processed: u64,
     /// True when the source produces no more data.
@@ -483,13 +483,13 @@ pub struct StreamCDC {
     mask_l: u64,
 }
 
-impl StreamCDC {
+impl<R: Read> StreamCDC<R> {
     ///
     /// Construct a `StreamCDC` that will process bytes from the given source.
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
-    pub fn new(source: Box<dyn Read>, min_size: u32, avg_size: u32, max_size: u32) -> Self {
+    pub fn new(source: R, min_size: u32, avg_size: u32, max_size: u32) -> Self {
         StreamCDC::with_level(source, min_size, avg_size, max_size, Normalization::Level1)
     }
 
@@ -497,7 +497,7 @@ impl StreamCDC {
     /// Create a new `StreamCDC` with the given normalization level.
     ///
     pub fn with_level(
-        source: Box<dyn Read>,
+        source: R,
         min_size: u32,
         avg_size: u32,
         max_size: u32,
@@ -598,7 +598,7 @@ impl StreamCDC {
     }
 }
 
-impl Iterator for StreamCDC {
+impl<R: Read> Iterator for StreamCDC<R> {
     type Item = Result<ChunkData, Error>;
 
     fn next(&mut self) -> Option<Result<ChunkData, Error>> {
@@ -955,7 +955,7 @@ mod tests {
                 digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
             },
         ];
-        let chunker = StreamCDC::new(Box::new(file), 4096, 16384, 65535);
+        let chunker = StreamCDC::new(file, 4096, 16384, 65535);
         let mut index = 0;
         for result in chunker {
             assert!(result.is_ok());

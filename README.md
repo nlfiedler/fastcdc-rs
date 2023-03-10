@@ -43,11 +43,11 @@ for chunk in chunker {
 
 ### Streaming
 
-Both the `v2016` and `v2020` modules have a streaming version of FastCDC named `StreamCDC`, which takes a boxed `Read` and uses a byte vector with capacity equal to the specified maximum chunk size.
+Both the `v2016` and `v2020` modules have a streaming version of FastCDC named `StreamCDC`, which takes a `Read` and uses a byte vector with capacity equal to the specified maximum chunk size.
 
 ```rust
 let source = std::fs::File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-let chunker = fastcdc::v2020::StreamCDC::new(Box::new(source), 4096, 16384, 65535);
+let chunker = fastcdc::v2020::StreamCDC::new(source, 4096, 16384, 65535);
 for result in chunker {
     let chunk = result.unwrap();
     println!("offset={} length={}", chunk.offset, chunk.length);
