@@ -1,5 +1,24 @@
-* Action Items
-** Time for examples to chunk =MSEdge-Win10.ova= with 4mb chunks
+* Experimental Evaluation
+** All times below are on an Apple M1 with 16 GB RAM
+** Time for examples to chunk =last_day.mov= with 1mb chunks (552 MB)
+*** use =time cargo run --release ...=, 7 times, drop low/high average remaining 5
+| chunker | avg time |
+|---------+----------|
+| v2016   |    0.524 |
+| v2020   |    0.456 |
+** Time for examples to chunk =kwok_anniversary.mov= with 1mb chunks (1.9 GB)
+*** use =time cargo run --release ...=, 7 times, drop low/high average remaining 5
+| chunker | avg time |
+|---------+----------|
+| v2016   |    1.250 |
+| v2020   |    1.035 |
+** Time for examples to chunk =hgg_graduation.mov= with 1mb chunks (5.9 GB)
+*** use =time cargo run --release ...=, 7 times, drop low/high average remaining 5
+| chunker | avg time |
+|---------+----------|
+| v2016   |    3.497 |
+| v2020   |    2.791 |
+** Time for examples to chunk =MSEdge-Win10.ova= with 4mb chunks (7.x GB)
 *** use =time cargo run --release ...=, 7 times, drop low/high, average remaining 5
 *** note that the non-streaming examples use =memmap2= to read from the file as a slice
 | chunker    | avg time |

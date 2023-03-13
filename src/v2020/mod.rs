@@ -10,7 +10,9 @@
 //! hash, sub-minimum chunk cut-point skipping, normalized chunking to produce
 //! chunks of a more consistent length, and "rolling two bytes each time".
 //! According to the authors, this should be 30-40% faster than the 2016 version
-//! while producing the same cut points.
+//! while producing the same cut points. Benchmarks on several large files on an
+//! Apple M1 show about a 20% improvement, but results may vary depending on CPU
+//! architecture, file size, chunk size, etc.
 //!
 //! There are two ways in which to use the `FastCDC` struct defined in this
 //! module. One is to simply invoke `cut()` while managing your own `start` and
