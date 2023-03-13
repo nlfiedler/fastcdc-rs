@@ -476,7 +476,7 @@ impl<'a> Iterator for FastCDC<'a> {
         // values, as the upper bound doesn't actually seem to get used by `std`
         // and using the actual lower bound is practically guaranteed to require
         // a second capacity growth.
-        let upper_bound = self.source.len() / self.min_size;
+        let upper_bound = self.remaining / self.min_size;
         (upper_bound, Some(upper_bound))
     }
 }
