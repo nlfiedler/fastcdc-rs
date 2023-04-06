@@ -51,7 +51,7 @@ pub struct Chunk {
 
 ///
 /// The FastCDC chunker implementation by Joran Dirk Greef.
-/// 
+///
 /// Use `new` to construct a new instance, and then iterate over the `Chunk`s
 /// via the `Iterator` trait.
 ///
