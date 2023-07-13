@@ -38,10 +38,14 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      - name: Run cargo test (futures)
+      - name: Run cargo test (async/tokio)
         uses: actions-rs/cargo@v1
         with:
-          command: test --no-default-features --features futures
+          command: test --features tokio
+      - name: Run cargo test (async/futures)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test --features futures
 
   lints:
     name: Lints

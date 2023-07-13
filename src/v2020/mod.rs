@@ -34,7 +34,9 @@
 use std::fmt;
 use std::io::Read;
 
+#[cfg(any(feature = "tokio", feature = "futures"))]
 mod async_stream_cdc;
+#[cfg(any(feature = "tokio", feature = "futures"))]
 pub use async_stream_cdc::*;
 
 /// Smallest acceptable value for the minimum chunk size.

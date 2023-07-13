@@ -14,7 +14,7 @@ exclude = [
 ]
 
 [features]
-default = ["tokio"]
+default = []
 tokio = ["dep:tokio", "tokio-stream", "async-stream"]
 futures = ["dep:futures"]
 

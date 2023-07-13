@@ -42,15 +42,17 @@ use async_stream::try_stream;
 /// # #[cfg(all(feature = "tokio", not(feature = "futures")))]
 /// # use tokio_stream::StreamExt;
 ///
-/// let source = File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-/// let chunker = AsyncStreamCDC::new(&source, 4096, 16384, 65535);
-/// let stream = chunker.as_stream();
+/// async fn run() {
+///     let source = std::fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+///     let mut chunker = AsyncStreamCDC::new(source.as_ref(), 4096, 16384, 65535);
+///     let stream = chunker.as_stream();
 ///
-/// let chunks = stream.collect::<Vec<_>>().await;
+///     let chunks = stream.collect::<Vec<_>>().await;
 ///
-/// for result in chunks {
-///     let chunk = result.unwrap();
-///     println!("offset={} length={}", chunk.offset, chunk.length);
+///     for result in chunks {
+///         let chunk = result.unwrap();
+///         println!("offset={} length={}", chunk.offset, chunk.length);
+///     }
 /// }
 /// ```
 ///
