@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [3.1.0] - 2023-07-15
+### Changed
+- mzr: add `AsyncStreamCDC` for asynchronous streaming support
+- cdata: add features `futures` and `tokio` to enable `AsyncStreamCDC`
+
 ## [3.0.3] - 2023-03-29
 ### Changed
 - LokyinZHAO: fix: `size_hint()` returns estimated number of remaining chunks
@@ -15,7 +20,7 @@ This file follows the convention described at
 
 ## [3.0.1] - 2023-02-28
 ### Added
-- nagy: Support conversion to `std::io::Error` in streaming chunkers.
+- nagy: support conversion to `std::io::Error` in streaming chunkers
 ### Fixed
 - ariel-miculas: doc: fix year in `fastcdc::v2020`
 
