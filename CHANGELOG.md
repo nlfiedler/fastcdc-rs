@@ -6,7 +6,7 @@ This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [3.1.0] - 2023-07-15
-### Changed
+### Added
 - mzr: add `AsyncStreamCDC` for asynchronous streaming support
 - cdata: add features `futures` and `tokio` to enable `AsyncStreamCDC`
 
