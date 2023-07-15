@@ -2,10 +2,10 @@ on: [push, pull_request]
 name: Test
 jobs:
   build:
-    name: Build 
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo 
+      - name: Checkout repo
         uses: actions/checkout@v2
 
       - name: Install rust stable toolchain
@@ -15,10 +15,10 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run cargo build 
+      - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
-          command: build 
+          command: build
 
   test:
     name: Test
@@ -38,6 +38,16 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+      - name: Run cargo test (async/tokio)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features tokio
+      - name: Run cargo test (async/futures)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features futures
 
   lints:
     name: Lints

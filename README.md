@@ -54,6 +54,22 @@ for result in chunker {
 }
 ```
 
+### Async Streaming
+
+The `v2020` module has an async streaming version of FastCDC named `AsyncStreamCDC`, which takes an `AsyncRead` (both `tokio` and `futures` are supported via feature flags) and uses a byte vector with capacity equal to the specified maximum chunk size.
+
+```rust
+let source = std::fs::File::open("test/fixtures/SekienAkashita.jpg").unwrap();
+let chunker = fastcdc::v2020::AsyncStreamCDC::new(&source, 4096, 16384, 65535);
+let stream = chunker.as_stream();
+let chunks = stream.collect::<Vec<_>>().await;
+
+for result in chunks {
+    let chunk = result.unwrap();
+    println!("offset={} length={}", chunk.offset, chunk.length);
+}
+```
+
 ## Migration from pre-3.0
 
 If you were using a release of this crate from before the 3.0 release, you will need to make a small adjustment to continue using the same implementation as before.
