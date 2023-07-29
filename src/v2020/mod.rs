@@ -329,6 +329,12 @@ impl Normalization {
     }
 }
 
+impl fmt::Display for Normalization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.bits().fmt(f)
+    }
+}
+
 ///
 /// Represents a chunk returned from the FastCDC iterator.
 ///
