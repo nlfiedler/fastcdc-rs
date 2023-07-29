@@ -306,6 +306,7 @@ pub(self) fn cut(
 /// data being smaller than the minimum chunk size, which results in a hash
 /// value of zero since no calculations are performed for sub-minimum chunks.
 ///
+#[derive(Copy, Clone, Debug)]
 pub enum Normalization {
     /// No chunk size normalization, produces a wide range of chunk sizes.
     Level0,

@@ -218,6 +218,7 @@ fn cut(
 /// value of zero (`0`) since no calculations are performed for sub-minimum
 /// chunks.
 ///
+#[derive(Copy, Clone, Debug)]
 pub enum Normalization {
     /// No chunk size normalization, produces a wide range of chunk sizes.
     Level0,
