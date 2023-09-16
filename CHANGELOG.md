@@ -16,7 +16,8 @@ This file follows the convention described at
 
 ## [3.0.2] - 2023-03-10
 ### Changed
-- Removed unnecessary use of `Box` from `StreamCDC` in `v2016` and `v2020`.
+- **Breaking:** Removed unnecessary use of `Box` from `StreamCDC` in `v2016` and `v2020`.
+- *Should have made this version to be **4.0** but failed to notice the breaking change until after releasing two more updates.*
 
 ## [3.0.1] - 2023-02-28
 ### Added
