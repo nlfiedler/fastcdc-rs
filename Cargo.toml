@@ -13,6 +13,9 @@ exclude = [
     "test/*",
 ]
 
+[package.metadata.docs.rs]
+features = ["futures"]
+
 [features]
 default = []
 tokio = ["dep:tokio", "tokio-stream", "async-stream"]
