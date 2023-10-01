@@ -46,19 +46,19 @@
 //! [ronomon/deduplication](https://github.com/ronomon/deduplication)
 //! repository, written by Joran Dirk Greef. That variation makes several
 //! changes to the original algorithm, primarily to accomodate JavaScript. The
-//! Rust version of this variation is found in the `ronomon` module in this
+//! Rust version of this variation is found in the [`ronomon`] module in this
 //! crate.
 //!
 //! For a canonical implementation of the algorithm as described in the 2016
-//! paper, see the `v2016` crate.
+//! paper, see the [`v2016`] module.
 //!
 //! For a canonical implementation of the algorithm as described in the 2020
-//! paper, see the `v2020` crate. This implementation produces identical cut
+//! paper, see the [`v2020`] module. This implementation produces identical cut
 //! points as the 2016 version, but does so a bit faster.
 //!
-//! If you are using this crate for the first time, the `v2020` implementation
+//! If you are using this crate for the first time, the [`v2020`] implementation
 //! would be the most appropriate. It uses 64-bit hash values and tends to be
-//! faster than both the `ronomon` and `v2016` versions.
+//! faster than both the [`ronomon`] and [`v2016`] versions.
 //!
 //! ## Examples
 //!
@@ -116,7 +116,7 @@
 //! ## Large Data
 //!
 //! If processing very large files, the streaming version of the chunkers in the
-//! `v2016` and `v2020` modules may be a suitable approach. They both allocate a
+//! [`v2016`] and [`v2020`] modules may be a suitable approach. They both allocate a
 //! byte vector equal to the maximum chunk size, draining and resizing the
 //! vector as chunks are found. However, using a crate such as `memmap2` can be
 //! significantly faster than the streaming chunkers. See the examples in the

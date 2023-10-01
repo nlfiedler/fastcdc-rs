@@ -23,15 +23,15 @@ use async_stream::try_stream;
 /// An async-streamable version of the FastCDC chunker implementation from 2020
 /// with streaming support.
 ///
-/// Use `new` to construct an instance, and then `as_stream` to produce an async
-/// [Stream] of the chunks.
+/// Use `new` to construct an instance, and then [`as_stream`](AsyncStreamCDC::as_stream)
+/// to produce an async [Stream] of the chunks.
 ///
 /// Both `futures` and `tokio`-based [AsyncRead] inputs are supported via
 /// feature flags. But, if necessary you can also use the
 /// [`async_compat`](https://docs.rs/async-compat/latest/async_compat/) crate to
 /// adapt your inputs as circumstances may require.
 ///
-/// Note that this struct allocates a `Vec<u8>` of `max_size` bytes to act as a
+/// Note that this struct allocates a [`Vec<u8>`] of `max_size` bytes to act as a
 /// buffer when reading from the source and finding chunk boundaries.
 ///
 /// ```no_run
@@ -80,7 +80,7 @@ pub struct AsyncStreamCDC<R> {
 
 impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
     ///
-    /// Construct a `StreamCDC` that will process bytes from the given source.
+    /// Construct a [`AsyncStreamCDC`] that will process bytes from the given source.
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
@@ -89,7 +89,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
     }
 
     ///
-    /// Create a new `StreamCDC` with the given normalization level.
+    /// Create a new [`AsyncStreamCDC`] with the given normalization level.
     ///
     pub fn with_level(
         source: R,

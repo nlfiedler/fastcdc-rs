@@ -14,23 +14,23 @@
 //! Apple M1 show about a 20% improvement, but results may vary depending on CPU
 //! architecture, file size, chunk size, etc.
 //!
-//! There are two ways in which to use the `FastCDC` struct defined in this
-//! module. One is to simply invoke `cut()` while managing your own `start` and
-//! `remaining` values. The other is to use the struct as an `Iterator` that
-//! yields `Chunk` structs which represent the offset and size of the chunks.
-//! Note that attempting to use both `cut()` and `Iterator` on the same
-//! `FastCDC` instance will yield incorrect results.
+//! There are two ways in which to use the [`FastCDC`] struct defined in this
+//! module. One is to simply invoke [`cut()`](FastCDC::cut) while managing your own `start` and
+//! `remaining` values. The other is to use the struct as an [`Iterator`] that
+//! yields [`Chunk`] structs which represent the offset and size of the chunks.
+//! Note that attempting to use both [`cut()`](FastCDC::cut) and [`Iterator`] on the same
+//! [`FastCDC`] instance will yield incorrect results.
 //!
-//! Note that the `cut()` function returns the 64-bit hash of the chunk, which
+//! Note that the [`cut()`] function returns the 64-bit hash of the chunk, which
 //! may be useful in scenarios involving chunk size prediction using historical
 //! data, such as in RapidCDC or SuperCDC. This hash value is also given in the
-//! `hash` field of the `Chunk` struct. While this value has rather low entropy,
+//! `hash` field of the [`Chunk`] struct. While this value has rather low entropy,
 //! it is computationally cost-free and can be put to some use with additional
 //! record keeping.
 //!
-//! The `StreamCDC` implementation is similar to `FastCDC` except that it will
-//! read data from a `Read` into an internal buffer of `max_size` and produce
-//! `ChunkData` values from the `Iterator`.
+//! The [`StreamCDC`] implementation is similar to [`FastCDC`] except that it will
+//! read data from a [`Read`] into an internal buffer of `max_size` and produce
+//! [`ChunkData`] values from the [`Iterator`].
 use std::fmt;
 use std::io::Read;
 
@@ -300,7 +300,7 @@ pub fn cut(
 ///
 /// Note that lower levels of normalization will result in a larger range of
 /// generated chunk sizes. It may be beneficial to widen the minimum/maximum
-/// chunk size values given to the `FastCDC` constructor in that case.
+/// chunk size values given to the [`FastCDC`] constructor in that case.
 ///
 /// Note that higher levels of normalization may result in the final chunk of
 /// data being smaller than the minimum chunk size, which results in a hash
@@ -336,7 +336,7 @@ impl fmt::Display for Normalization {
 }
 
 ///
-/// Represents a chunk returned from the FastCDC iterator.
+/// Represents a chunk returned from the [`FastCDC`] iterator.
 ///
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Chunk {
@@ -351,8 +351,8 @@ pub struct Chunk {
 ///
 /// The FastCDC chunker implementation from 2020.
 ///
-/// Use `new` to construct an instance, and then iterate over the `Chunk`s via
-/// the `Iterator` trait.
+/// Use `new` to construct an instance, and then iterate over the [`Chunk`]s via
+/// the [`Iterator`] trait.
 ///
 /// This example reads a file into memory and splits it into chunks that are
 /// roughly 16 KB in size. The minimum and maximum sizes are the absolute limit
@@ -388,7 +388,7 @@ pub struct FastCDC<'a> {
 
 impl<'a> FastCDC<'a> {
     ///
-    /// Construct a `FastCDC` that will process the given slice of bytes.
+    /// Construct a [`FastCDC`] that will process the given slice of bytes.
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
@@ -397,7 +397,7 @@ impl<'a> FastCDC<'a> {
     }
 
     ///
-    /// Create a new `FastCDC` with the given normalization level.
+    /// Create a new [`FastCDC`] with the given normalization level.
     ///
     pub fn with_level(
         source: &'a [u8],
@@ -494,7 +494,7 @@ impl<'a> Iterator for FastCDC<'a> {
 }
 
 ///
-/// The error type returned from the `StreamCDC` iterator.
+/// The error type returned from the [`StreamCDC`] iterator.
 ///
 #[derive(Debug)]
 pub enum Error {
@@ -531,7 +531,7 @@ impl From<Error> for std::io::Error {
 }
 
 ///
-/// Represents a chunk returned from the StreamCDC iterator.
+/// Represents a chunk returned from the [`StreamCDC`] iterator.
 ///
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ChunkData {
@@ -548,10 +548,10 @@ pub struct ChunkData {
 ///
 /// The FastCDC chunker implementation from 2020 with streaming support.
 ///
-/// Use `new` to construct an instance, and then iterate over the `ChunkData`s
-/// via the `Iterator` trait.
+/// Use `new` to construct an instance, and then iterate over the [`ChunkData`]s
+/// via the [`Iterator`] trait.
 ///
-/// Note that this struct allocates a `Vec<u8>` of `max_size` bytes to act as a
+/// Note that this struct allocates a [`Vec<u8>`] of `max_size` bytes to act as a
 /// buffer when reading from the source and finding chunk boundaries.
 ///
 /// ```no_run
@@ -589,7 +589,7 @@ pub struct StreamCDC<R: Read> {
 
 impl<R: Read> StreamCDC<R> {
     ///
-    /// Construct a `StreamCDC` that will process bytes from the given source.
+    /// Construct a [`StreamCDC`] that will process bytes from the given source.
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
@@ -598,7 +598,7 @@ impl<R: Read> StreamCDC<R> {
     }
 
     ///
-    /// Create a new `StreamCDC` with the given normalization level.
+    /// Create a new [`StreamCDC`] with the given normalization level.
     ///
     pub fn with_level(
         source: R,
