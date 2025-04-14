@@ -238,6 +238,19 @@ const GEAR_LS: [u64; 256] = [
     0x1c7c8443a6c28826, 0xde29a1b0d7e34458, 0xc3b061a7e2d8bbb6, 0x557a56548a2a09c2
 ];
 
+fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
+    let mut gear = Box::new(GEAR);
+    let mut gear_ls = Box::new(GEAR_LS);
+    for v in &mut *gear {
+        *v ^= seed
+    }
+    let seed_ls = seed << 1;
+    for v in &mut *gear_ls {
+        *v ^= seed_ls
+    }
+    (gear, gear_ls)
+}
+
 // Find the next chunk cut point in the source.
 #[allow(clippy::too_many_arguments)]
 pub fn cut(
@@ -249,6 +262,8 @@ pub fn cut(
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
+    gear: [u64; 256],
+    gear_ls: [u64; 256],
 ) -> (u64, usize) {
     let mut remaining = source.len();
     if remaining <= min_size {
@@ -264,11 +279,11 @@ pub fn cut(
     let mut hash: u64 = 0;
     while index < center / 2 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(GEAR_LS[source[a] as usize]);
+        hash = (hash << 2).wrapping_add(gear_ls[source[a] as usize]);
         if (hash & mask_s_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(GEAR[source[a + 1] as usize]);
+        hash = hash.wrapping_add(gear[source[a + 1] as usize]);
         if (hash & mask_s) == 0 {
             return (hash, a + 1);
         }
@@ -276,11 +291,11 @@ pub fn cut(
     }
     while index < remaining / 2 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(GEAR_LS[source[a] as usize]);
+        hash = (hash << 2).wrapping_add(gear_ls[source[a] as usize]);
         if (hash & mask_l_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(GEAR[source[a + 1] as usize]);
+        hash = hash.wrapping_add(gear[source[a + 1] as usize]);
         if (hash & mask_l) == 0 {
             return (hash, a + 1);
         }
@@ -384,6 +399,8 @@ pub struct FastCDC<'a> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
+    gear: Box<[u64; 256]>,
+    gear_ls: Box<[u64; 256]>,
 }
 
 impl<'a> FastCDC<'a> {
@@ -406,6 +423,20 @@ impl<'a> FastCDC<'a> {
         max_size: u32,
         level: Normalization,
     ) -> Self {
+        FastCDC::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
+    }
+
+    ///
+    /// Create a new [`FastCDC`] with the given normalization level.
+    ///
+    pub fn with_level_and_seed(
+        source: &'a [u8],
+        min_size: u32,
+        avg_size: u32,
+        max_size: u32,
+        level: Normalization,
+        seed: u64,
+    ) -> Self {
         assert!(min_size >= MINIMUM_MIN);
         assert!(min_size <= MINIMUM_MAX);
         assert!(avg_size >= AVERAGE_MIN);
@@ -416,6 +447,7 @@ impl<'a> FastCDC<'a> {
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
+        let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             source,
             processed: 0,
@@ -427,6 +459,8 @@ impl<'a> FastCDC<'a> {
             mask_l,
             mask_s_ls: mask_s << 1,
             mask_l_ls: mask_l << 1,
+            gear,
+            gear_ls,
         }
     }
 
@@ -454,6 +488,8 @@ impl<'a> FastCDC<'a> {
             self.mask_l,
             self.mask_s_ls,
             self.mask_l_ls,
+            *self.gear,
+            *self.gear_ls,
         );
         (hash, start + count)
     }
@@ -585,6 +621,8 @@ pub struct StreamCDC<R: Read> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
+    gear: Box<[u64; 256]>,
+    gear_ls: Box<[u64; 256]>,
 }
 
 impl<R: Read> StreamCDC<R> {
@@ -607,6 +645,20 @@ impl<R: Read> StreamCDC<R> {
         max_size: u32,
         level: Normalization,
     ) -> Self {
+        StreamCDC::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
+    }
+
+    ///
+    /// Create a new [`StreamCDC`] with the given normalization level and hash seed.
+    ///
+    pub fn with_level_and_seed(
+        source: R,
+        min_size: u32,
+        avg_size: u32,
+        max_size: u32,
+        level: Normalization,
+        seed: u64,
+    ) -> Self {
         assert!(min_size >= MINIMUM_MIN);
         assert!(min_size <= MINIMUM_MAX);
         assert!(avg_size >= AVERAGE_MIN);
@@ -617,6 +669,7 @@ impl<R: Read> StreamCDC<R> {
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
+        let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             buffer: vec![0_u8; max_size as usize],
             capacity: max_size as usize,
@@ -631,6 +684,8 @@ impl<R: Read> StreamCDC<R> {
             mask_l,
             mask_s_ls: mask_s << 1,
             mask_l_ls: mask_l << 1,
+            gear,
+            gear_ls,
         }
     }
 
@@ -688,6 +743,8 @@ impl<R: Read> StreamCDC<R> {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
+                *self.gear,
+                *self.gear_ls,
             );
             if count == 0 {
                 Err(Error::Empty)
@@ -855,6 +912,32 @@ mod tests {
             (13019990849178155730, 28084),
             (4509236223063678303, 18217),
             (2504464741100432583, 24700),
+        ];
+        for (e_hash, e_length) in expected.iter() {
+            let (hash, pos) = chunker.cut(cursor, remaining);
+            assert_eq!(hash, *e_hash);
+            assert_eq!(pos, cursor + e_length);
+            cursor = pos;
+            remaining -= e_length;
+        }
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn test_cut_sekien_16k_chunks_seed_666() {
+        let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
+        assert!(read_result.is_ok());
+        let contents = read_result.unwrap();
+        let chunker = FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666);
+        let mut cursor: usize = 0;
+        let mut remaining: usize = contents.len();
+        let expected: Vec<(u64, usize)> = vec![
+            (9312357714466240148, 10605),
+            (226910853333574584, 55745),
+            (12271755243986371352, 11346),
+            (14153975939352546047, 5883),
+            (5890158701071314778, 11586),
+            (8981594897574481255, 14301),
         ];
         for (e_hash, e_length) in expected.iter() {
             let (hash, pos) = chunker.cut(cursor, remaining);
@@ -1079,5 +1162,67 @@ mod tests {
             index += 1;
         }
         assert_eq!(index, 5);
+    }
+
+    #[test]
+    fn test_stream_sekien_16k_chunks_seed_666() {
+        let file_result = File::open("test/fixtures/SekienAkashita.jpg");
+        assert!(file_result.is_ok());
+        let file = file_result.unwrap();
+        // The set of expected results should match the non-streaming version.
+        let expected_chunks = vec![
+            ExpectedChunk {
+                hash: 9312357714466240148,
+                offset: 0,
+                length: 10605,
+                digest: "09734863c8022bb0314f3de8c87a6d00".into(),
+            },
+            ExpectedChunk {
+                hash: 226910853333574584,
+                offset: 10605,
+                length: 55745,
+                digest: "4e49a6aa921341881f47ec0bbcdba6a9".into(),
+            },
+            ExpectedChunk {
+                hash: 12271755243986371352,
+                offset: 66350,
+                length: 11346,
+                digest: "f4b0cf33b1521be2a6af69df9bf90455".into(),
+            },
+            ExpectedChunk {
+                hash: 14153975939352546047,
+                offset: 77696,
+                length: 5883,
+                digest: "f392b5df328ce6c43de7e19464a455b4".into(),
+            },
+            ExpectedChunk {
+                hash: 5890158701071314778,
+                offset: 83579,
+                length: 11586,
+                digest: "a6053ce5cd98e6b717e7f97e71d743ba".into(),
+            },
+            ExpectedChunk {
+                hash: 8981594897574481255,
+                offset: 95165,
+                length: 14301,
+                digest: "0db10fbf2685498e16e5440f5e697e2f".into(),
+            },
+        ];
+        let chunker = StreamCDC::with_level_and_seed(file, 4096, 16384, 65535, Normalization::Level1, 666);
+        let mut index = 0;
+        for result in chunker {
+            assert!(result.is_ok());
+            let chunk = result.unwrap();
+            assert_eq!(chunk.hash, expected_chunks[index].hash);
+            assert_eq!(chunk.offset, expected_chunks[index].offset);
+            assert_eq!(chunk.length, expected_chunks[index].length);
+            let mut hasher = Md5::new();
+            hasher.update(&chunk.data);
+            let table = hasher.finalize();
+            let digest = format!("{:x}", table);
+            assert_eq!(digest, expected_chunks[index].digest);
+            index += 1;
+        }
+        assert_eq!(index, 6);
     }
 }
