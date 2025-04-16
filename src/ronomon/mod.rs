@@ -179,7 +179,7 @@ impl<'a> FastCDC<'a> {
     }
 }
 
-impl<'a> Iterator for FastCDC<'a> {
+impl Iterator for FastCDC<'_> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Chunk> {
@@ -220,18 +220,11 @@ fn logarithm2(value: u32) -> u32 {
 }
 
 ///
-/// Integer division that rounds up instead of down.
-///
-fn ceil_div(x: usize, y: usize) -> usize {
-    (x + y - 1) / y
-}
-
-///
 /// Find the middle of the desired chunk size, or what the FastCDC paper refers
 /// to as the "normal size".
 ///
 fn center_size(average: usize, minimum: usize, source_size: usize) -> usize {
-    let mut offset: usize = minimum + ceil_div(minimum, 2);
+    let mut offset: usize = minimum + minimum.div_ceil(2);
     if offset > average {
         offset = average;
     }
@@ -335,16 +328,6 @@ mod tests {
         // test implementation assumptions
         assert!(logarithm2(AVERAGE_MIN as u32) >= 8);
         assert!(logarithm2(AVERAGE_MAX as u32) <= 28);
-    }
-
-    #[test]
-    fn test_ceil_div() {
-        assert_eq!(ceil_div(10, 5), 2);
-        assert_eq!(ceil_div(11, 5), 3);
-        assert_eq!(ceil_div(10, 3), 4);
-        assert_eq!(ceil_div(9, 3), 3);
-        assert_eq!(ceil_div(6, 2), 3);
-        assert_eq!(ceil_div(5, 2), 3);
     }
 
     #[test]

@@ -364,7 +364,7 @@ impl<'a> FastCDC<'a> {
     }
 }
 
-impl<'a> Iterator for FastCDC<'a> {
+impl Iterator for FastCDC<'_> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Chunk> {
