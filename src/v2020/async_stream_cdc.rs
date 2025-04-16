@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Nathan Fiedler
+// Copyright (c) 2025 Nathan Fiedler
 //
 
 use super::*;
@@ -76,6 +76,8 @@ pub struct AsyncStreamCDC<R> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
+    gear: Box<[u64; 256]>,
+    gear_ls: Box<[u64; 256]>,
 }
 
 impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
@@ -98,6 +100,21 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         max_size: u32,
         level: Normalization,
     ) -> Self {
+        Self::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
+    }
+
+    ///
+    /// Create a new [`AsyncStreamCDC`] with the given normalization level and
+    /// seed to be XOR'd with the values in the gear tables.
+    ///
+    pub fn with_level_and_seed(
+        source: R,
+        min_size: u32,
+        avg_size: u32,
+        max_size: u32,
+        level: Normalization,
+        seed: u64,
+    ) -> Self {
         assert!(min_size >= MINIMUM_MIN);
         assert!(min_size <= MINIMUM_MAX);
         assert!(avg_size >= AVERAGE_MIN);
@@ -108,6 +125,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
+        let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             buffer: vec![0_u8; max_size as usize],
             capacity: max_size as usize,
@@ -122,6 +140,8 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
             mask_l,
             mask_s_ls: mask_s << 1,
             mask_l_ls: mask_l << 1,
+            gear,
+            gear_ls,
         }
     }
 
@@ -179,6 +199,8 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
+                *self.gear,
+                *self.gear_ls,
             );
             if count == 0 {
                 Err(Error::Empty)

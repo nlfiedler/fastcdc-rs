@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Nathan Fiedler
+// Copyright (c) 2025 Nathan Fiedler
 //
 
 //! This module implements the canonical FastCDC algorithm as described in the
@@ -238,15 +238,19 @@ const GEAR_LS: [u64; 256] = [
     0x1c7c8443a6c28826, 0xde29a1b0d7e34458, 0xc3b061a7e2d8bbb6, 0x557a56548a2a09c2
 ];
 
+// Produce the gear table (and left-shifted gear table) in which the values have
+// been XOR'd with the given seed.
 fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
     let mut gear = Box::new(GEAR);
     let mut gear_ls = Box::new(GEAR_LS);
-    for v in &mut *gear {
-        *v ^= seed
-    }
-    let seed_ls = seed << 1;
-    for v in &mut *gear_ls {
-        *v ^= seed_ls
+    if seed > 0 {
+        for v in &mut *gear {
+            *v ^= seed
+        }
+        let seed_ls = seed << 1;
+        for v in &mut *gear_ls {
+            *v ^= seed_ls
+        }
     }
     (gear, gear_ls)
 }
@@ -427,7 +431,8 @@ impl<'a> FastCDC<'a> {
     }
 
     ///
-    /// Create a new [`FastCDC`] with the given normalization level.
+    /// Create a new [`FastCDC`] with the given normalization level and seed to
+    /// be XOR'd with the values in the gear tables.
     ///
     pub fn with_level_and_seed(
         source: &'a [u8],
@@ -928,7 +933,8 @@ mod tests {
         let read_result = fs::read("test/fixtures/SekienAkashita.jpg");
         assert!(read_result.is_ok());
         let contents = read_result.unwrap();
-        let chunker = FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666);
+        let chunker =
+            FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666);
         let mut cursor: usize = 0;
         let mut remaining: usize = contents.len();
         let expected: Vec<(u64, usize)> = vec![
@@ -1208,7 +1214,8 @@ mod tests {
                 digest: "0db10fbf2685498e16e5440f5e697e2f".into(),
             },
         ];
-        let chunker = StreamCDC::with_level_and_seed(file, 4096, 16384, 65535, Normalization::Level1, 666);
+        let chunker =
+            StreamCDC::with_level_and_seed(file, 4096, 16384, 65535, Normalization::Level1, 666);
         let mut index = 0;
         for result in chunker {
             assert!(result.is_ok());
