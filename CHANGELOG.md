@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [3.2.0] - 2025-04-17
+### Added
+- omgold: add `with_level_and_seed()` to the v2020 FastCDC implementations.
+  This modifies the GEAR hash to prevent attacks that involve inferring
+  information about the data based on the result of chunking.
+
 ## [3.1.0] - 2023-07-15
 ### Added
 - mzr: add `AsyncStreamCDC` for asynchronous streaming support

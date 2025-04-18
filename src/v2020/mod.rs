@@ -15,22 +15,33 @@
 //! architecture, file size, chunk size, etc.
 //!
 //! There are two ways in which to use the [`FastCDC`] struct defined in this
-//! module. One is to simply invoke [`cut()`](FastCDC::cut) while managing your own `start` and
-//! `remaining` values. The other is to use the struct as an [`Iterator`] that
-//! yields [`Chunk`] structs which represent the offset and size of the chunks.
-//! Note that attempting to use both [`cut()`](FastCDC::cut) and [`Iterator`] on the same
-//! [`FastCDC`] instance will yield incorrect results.
+//! module. One is to simply invoke [`cut()`](FastCDC::cut) while managing your
+//! own `start` and `remaining` values. The other is to use the struct as an
+//! [`Iterator`] that yields [`Chunk`] structs which represent the offset and
+//! size of the chunks. Note that attempting to use both [`cut()`](FastCDC::cut)
+//! and [`Iterator`] on the same [`FastCDC`] instance will yield incorrect
+//! results.
 //!
 //! Note that the [`cut()`] function returns the 64-bit hash of the chunk, which
 //! may be useful in scenarios involving chunk size prediction using historical
 //! data, such as in RapidCDC or SuperCDC. This hash value is also given in the
-//! `hash` field of the [`Chunk`] struct. While this value has rather low entropy,
-//! it is computationally cost-free and can be put to some use with additional
-//! record keeping.
+//! `hash` field of the [`Chunk`] struct. While this value has rather low
+//! entropy, it is computationally cost-free and can be put to some use with
+//! additional record keeping.
 //!
-//! The [`StreamCDC`] implementation is similar to [`FastCDC`] except that it will
-//! read data from a [`Read`] into an internal buffer of `max_size` and produce
-//! [`ChunkData`] values from the [`Iterator`].
+//! The [`StreamCDC`] implementation is similar to [`FastCDC`] except that it
+//! will read data from a [`Read`] into an internal buffer of `max_size` and
+//! produce [`ChunkData`] values from the [`Iterator`].
+//!
+//! ## Altering the chunking
+//!
+//! The [`FastCDC::with_level_and_seed`] and [`StreamCDC::with_level_and_seed`]
+//! functions allow for changing the GEAR table values in order to alter the
+//! chunk boundaries. If the seed is non-zero, then it will be used to perform a
+//! bitwise exclusive OR on the values in both the GEAR and left-shifted GEAR
+//! tables. Modifying the GEAR hash is useful for preventing attacks based on
+//! monitoring the chunking behavior and using that information to infer other
+//! attributes of the data that would otherwise be unknown.
 use std::fmt;
 use std::io::Read;
 
