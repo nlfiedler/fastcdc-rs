@@ -277,8 +277,8 @@ pub fn cut(
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: [u64; 256],
-    gear_ls: [u64; 256],
+    gear: &[u64; 256],
+    gear_ls: &[u64; 256],
 ) -> (u64, usize) {
     let mut remaining = source.len();
     if remaining <= min_size {
@@ -504,8 +504,8 @@ impl<'a> FastCDC<'a> {
             self.mask_l,
             self.mask_s_ls,
             self.mask_l_ls,
-            *self.gear,
-            *self.gear_ls,
+            &self.gear,
+            &self.gear_ls,
         );
         (hash, start + count)
     }
@@ -759,8 +759,8 @@ impl<R: Read> StreamCDC<R> {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
-                *self.gear,
-                *self.gear_ls,
+                &self.gear,
+                &self.gear_ls,
             );
             if count == 0 {
                 Err(Error::Empty)
