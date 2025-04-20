@@ -251,7 +251,7 @@ const GEAR_LS: [u64; 256] = [
 
 // Produce the gear table (and left-shifted gear table) in which the values have
 // been XOR'd with the given seed.
-fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
+pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
     let mut gear = Box::new(GEAR);
     let mut gear_ls = Box::new(GEAR_LS);
     if seed > 0 {
@@ -277,8 +277,8 @@ pub fn cut(
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: [u64; 256],
-    gear_ls: [u64; 256],
+    gear: &[u64; 256],
+    gear_ls: &[u64; 256],
 ) -> (u64, usize) {
     let mut remaining = source.len();
     if remaining <= min_size {
@@ -504,8 +504,8 @@ impl<'a> FastCDC<'a> {
             self.mask_l,
             self.mask_s_ls,
             self.mask_l_ls,
-            *self.gear,
-            *self.gear_ls,
+            &self.gear,
+            &self.gear_ls,
         );
         (hash, start + count)
     }
@@ -577,7 +577,7 @@ impl From<Error> for std::io::Error {
         match error {
             Error::IoError(ioerr) => ioerr,
             Error::Empty => Self::from(std::io::ErrorKind::UnexpectedEof),
-            Error::Other(str) => Self::new(std::io::ErrorKind::Other, str),
+            Error::Other(str) => Self::other(str),
         }
     }
 }
@@ -759,8 +759,8 @@ impl<R: Read> StreamCDC<R> {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
-                *self.gear,
-                *self.gear_ls,
+                &self.gear,
+                &self.gear_ls,
             );
             if count == 0 {
                 Err(Error::Empty)

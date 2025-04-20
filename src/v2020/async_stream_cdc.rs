@@ -199,8 +199,8 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
-                *self.gear,
-                *self.gear_ls,
+                &self.gear,
+                &self.gear_ls,
             );
             if count == 0 {
                 Err(Error::Empty)
