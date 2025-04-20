@@ -251,7 +251,7 @@ const GEAR_LS: [u64; 256] = [
 
 // Produce the gear table (and left-shifted gear table) in which the values have
 // been XOR'd with the given seed.
-fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
+pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
     let mut gear = Box::new(GEAR);
     let mut gear_ls = Box::new(GEAR_LS);
     if seed > 0 {
