@@ -249,8 +249,13 @@ const GEAR_LS: [u64; 256] = [
     0x1c7c8443a6c28826, 0xde29a1b0d7e34458, 0xc3b061a7e2d8bbb6, 0x557a56548a2a09c2
 ];
 
-// Produce the gear table (and left-shifted gear table) in which the values have
-// been XOR'd with the given seed.
+///
+/// Produce the GEAR table, and the left-shifted version, as heap-owned values.
+///
+/// This will copy the original GEAR table, and its left-shifted twin, and
+/// peform a bitwise exclusive OR on the values using the given seed. If the
+/// seed is zero, no computation is performed.
+///
 pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
     let mut gear = Box::new(GEAR);
     let mut gear_ls = Box::new(GEAR_LS);
@@ -266,9 +271,31 @@ pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
     (gear, gear_ls)
 }
 
-// Find the next chunk cut point in the source.
-#[allow(clippy::too_many_arguments)]
+///
+/// Find the next chunk cut point in the source using the original GEAR tables.
+/// 
+/// See the `v2020_cut` example for a lengthy example of using this function.
+///
 pub fn cut(
+    source: &[u8],
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
+    mask_s: u64,
+    mask_l: u64,
+    mask_s_ls: u64,
+    mask_l_ls: u64,
+) -> (u64, usize) {
+    cut_gear(
+        source, min_size, avg_size, max_size, mask_s, mask_l, mask_s_ls, mask_l_ls, &GEAR, &GEAR_LS,
+    )
+}
+
+///
+/// Find the next chunk cut point in the source using the given GEAR tables.
+///
+#[allow(clippy::too_many_arguments)]
+pub fn cut_gear(
     source: &[u8],
     min_size: usize,
     avg_size: usize,
@@ -349,7 +376,7 @@ pub enum Normalization {
 }
 
 impl Normalization {
-    pub(self) fn bits(&self) -> u32 {
+    pub fn bits(&self) -> u32 {
         match self {
             Normalization::Level0 => 0,
             Normalization::Level1 => 1,
@@ -495,7 +522,7 @@ impl<'a> FastCDC<'a> {
     ///
     pub fn cut(&self, start: usize, remaining: usize) -> (u64, usize) {
         let end = start + remaining;
-        let (hash, count) = cut(
+        let (hash, count) = cut_gear(
             &self.source[start..end],
             self.min_size,
             self.avg_size,
@@ -750,7 +777,7 @@ impl<R: Read> StreamCDC<R> {
         if self.length == 0 {
             Err(Error::Empty)
         } else {
-            let (hash, count) = cut(
+            let (hash, count) = cut_gear(
                 &self.buffer[..self.length],
                 self.min_size,
                 self.avg_size,

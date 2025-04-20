@@ -190,7 +190,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         if self.length == 0 {
             Err(Error::Empty)
         } else {
-            let (hash, count) = cut(
+            let (hash, count) = cut_gear(
                 &self.buffer[..self.length],
                 self.min_size,
                 self.avg_size,
