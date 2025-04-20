@@ -276,6 +276,7 @@ pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
 /// 
 /// See the `v2020_cut` example for a lengthy example of using this function.
 ///
+#[allow(clippy::too_many_arguments)]
 pub fn cut(
     source: &[u8],
     min_size: usize,
