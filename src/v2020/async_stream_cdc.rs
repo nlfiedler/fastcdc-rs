@@ -121,7 +121,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         assert!(avg_size <= AVERAGE_MAX);
         assert!(max_size >= MAXIMUM_MIN);
         assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
+        let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];

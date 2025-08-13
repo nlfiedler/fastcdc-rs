@@ -23,8 +23,8 @@ $ cargo run --example v2020 -- --size 16384 test/fixtures/SekienAkashita.jpg
     Finished dev [unoptimized + debuginfo] target(s) in 0.03s
      Running `target/debug/examples/v2020 --size 16384 test/fixtures/SekienAkashita.jpg`
 hash=17968276318003433923 offset=0 size=21325
-hash=4098594969649699419 offset=21325 size=17140
-hash=15733367461443853673 offset=38465 size=28084
+hash=8197189939299398838 offset=21325 size=17140
+hash=13019990849178155730 offset=38465 size=28084
 hash=4509236223063678303 offset=66549 size=18217
 hash=2504464741100432583 offset=84766 size=24700
 ```

@@ -322,7 +322,7 @@ impl<'a> FastCDC<'a> {
         assert!(avg_size <= AVERAGE_MAX);
         assert!(max_size >= MAXIMUM_MIN);
         assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
+        let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
@@ -516,7 +516,7 @@ impl<R: Read> StreamCDC<R> {
         assert!(avg_size <= AVERAGE_MAX);
         assert!(max_size >= MAXIMUM_MIN);
         assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
+        let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
@@ -618,54 +618,11 @@ impl<R: Read> Iterator for StreamCDC<R> {
     }
 }
 
-///
-/// Base-2 logarithm function for unsigned 32-bit integers.
-///
-fn logarithm2(value: u32) -> u32 {
-    f64::from(value).log2().round() as u32
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use md5::{Digest, Md5};
     use std::fs::{self, File};
-
-    #[test]
-    fn test_logarithm2() {
-        assert_eq!(logarithm2(0), 0);
-        assert_eq!(logarithm2(1), 0);
-        assert_eq!(logarithm2(2), 1);
-        assert_eq!(logarithm2(3), 2);
-        assert_eq!(logarithm2(5), 2);
-        assert_eq!(logarithm2(6), 3);
-        assert_eq!(logarithm2(11), 3);
-        assert_eq!(logarithm2(12), 4);
-        assert_eq!(logarithm2(19), 4);
-        assert_eq!(logarithm2(64), 6);
-        assert_eq!(logarithm2(128), 7);
-        assert_eq!(logarithm2(256), 8);
-        assert_eq!(logarithm2(512), 9);
-        assert_eq!(logarithm2(1024), 10);
-        assert_eq!(logarithm2(16383), 14);
-        assert_eq!(logarithm2(16384), 14);
-        assert_eq!(logarithm2(16385), 14);
-        assert_eq!(logarithm2(32767), 15);
-        assert_eq!(logarithm2(32768), 15);
-        assert_eq!(logarithm2(32769), 15);
-        assert_eq!(logarithm2(65535), 16);
-        assert_eq!(logarithm2(65536), 16);
-        assert_eq!(logarithm2(65537), 16);
-        assert_eq!(logarithm2(1_048_575), 20);
-        assert_eq!(logarithm2(1_048_576), 20);
-        assert_eq!(logarithm2(1_048_577), 20);
-        assert_eq!(logarithm2(4_194_303), 22);
-        assert_eq!(logarithm2(4_194_304), 22);
-        assert_eq!(logarithm2(4_194_305), 22);
-        assert_eq!(logarithm2(16_777_215), 24);
-        assert_eq!(logarithm2(16_777_216), 24);
-        assert_eq!(logarithm2(16_777_217), 24);
-    }
 
     #[test]
     #[should_panic]

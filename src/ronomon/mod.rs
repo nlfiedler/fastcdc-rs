@@ -112,7 +112,7 @@ impl<'a> FastCDC<'a> {
         assert!(avg_size <= AVERAGE_MAX);
         assert!(max_size >= MAXIMUM_MIN);
         assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size as u32);
+        let bits = (avg_size as u32).ilog2();
         let mask_s = mask(bits + 1);
         let mask_l = mask(bits - 1);
         Self {
@@ -208,14 +208,6 @@ impl Iterator for FastCDC<'_> {
 }
 
 ///
-/// Base-2 logarithm function for unsigned 32-bit integers.
-///
-fn logarithm2(value: u32) -> u32 {
-    let fvalue: f64 = f64::from(value);
-    fvalue.log2().round() as u32
-}
-
-///
 /// Find the middle of the desired chunk size, or what the FastCDC paper refers
 /// to as the "normal size".
 ///
@@ -295,36 +287,6 @@ const TABLE: [u32; 256] = [
 mod tests {
     use super::*;
     use std::fs;
-
-    #[test]
-    fn test_logarithm2() {
-        assert_eq!(logarithm2(0), 0);
-        assert_eq!(logarithm2(1), 0);
-        assert_eq!(logarithm2(2), 1);
-        assert_eq!(logarithm2(3), 2);
-        assert_eq!(logarithm2(5), 2);
-        assert_eq!(logarithm2(6), 3);
-        assert_eq!(logarithm2(11), 3);
-        assert_eq!(logarithm2(12), 4);
-        assert_eq!(logarithm2(19), 4);
-        assert_eq!(logarithm2(16383), 14);
-        assert_eq!(logarithm2(16384), 14);
-        assert_eq!(logarithm2(16385), 14);
-        assert_eq!(logarithm2(32767), 15);
-        assert_eq!(logarithm2(32768), 15);
-        assert_eq!(logarithm2(32769), 15);
-        assert_eq!(logarithm2(65535), 16);
-        assert_eq!(logarithm2(65536), 16);
-        assert_eq!(logarithm2(65537), 16);
-        assert_eq!(logarithm2(1048575), 20);
-        assert_eq!(logarithm2(1048576), 20);
-        assert_eq!(logarithm2(1048577), 20);
-        assert_eq!(logarithm2(4294967286), 32);
-        assert_eq!(logarithm2(4294967295), 32);
-        // test implementation assumptions
-        assert!(logarithm2(AVERAGE_MIN as u32) >= 8);
-        assert!(logarithm2(AVERAGE_MAX as u32) <= 28);
-    }
 
     #[test]
     fn test_center_size() {
