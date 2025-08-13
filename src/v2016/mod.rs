@@ -430,7 +430,7 @@ impl From<Error> for std::io::Error {
         match error {
             Error::IoError(ioerr) => ioerr,
             Error::Empty => Self::from(std::io::ErrorKind::UnexpectedEof),
-            Error::Other(str) => Self::new(std::io::ErrorKind::Other, str),
+            Error::Other(str) => Self::other(str),
         }
     }
 }
