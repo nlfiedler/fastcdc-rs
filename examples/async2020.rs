@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
-use clap::{arg, command, value_parser, Arg};
+use clap::{Arg, arg, command, value_parser};
 use fastcdc::v2020::*;
 use tokio::fs::File;
 use tokio_stream::StreamExt;

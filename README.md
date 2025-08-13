@@ -4,7 +4,7 @@ This crate contains multiple implementations of the "FastCDC" content defined ch
 
 ## Requirements
 
-* [Rust](https://www.rust-lang.org) stable (2018 edition)
+* [Rust](https://www.rust-lang.org) stable (2024 edition)
 
 ## Building and Testing
 

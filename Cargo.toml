@@ -2,7 +2,7 @@
 name = "fastcdc"
 version = "3.2.1"
 authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
-edition = "2018"
+edition = "2024"
 description = "FastCDC (content defined chunking) in pure Rust."
 repository = "https://github.com/nlfiedler/fastcdc-rs"
 readme = "README.md"

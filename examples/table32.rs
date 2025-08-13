@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
-use aes::cipher::{generic_array::GenericArray, KeyIvInit, StreamCipher};
+use aes::cipher::{KeyIvInit, StreamCipher, generic_array::GenericArray};
 use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
 
