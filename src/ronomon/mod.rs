@@ -435,9 +435,9 @@ mod tests {
             let chunker = FastCDC::with_eof(slice, 8192, 16384, 32768, eof);
             let results: Vec<Chunk> = chunker.collect();
             assert_eq!(results.len(), *group_size);
-            for idx in 0..*group_size {
-                assert_eq!(results[idx].offset + file_pos, chunk_offsets[chunk_index]);
-                assert_eq!(results[idx].length, chunk_sizes[chunk_index]);
+            for chunk in results.iter().take(*group_size) {
+                assert_eq!(chunk.offset + file_pos, chunk_offsets[chunk_index]);
+                assert_eq!(chunk.length, chunk_sizes[chunk_index]);
                 chunk_index += 1;
             }
             // advance the file pointer after using it for comparing offsets
