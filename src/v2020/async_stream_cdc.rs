@@ -333,7 +333,7 @@ mod tests {
         // The digest values are not needed here, but they serve to validate
         // that the streaming version tested below is returning the correct
         // chunk data on each iteration.
-        let expected_chunks = vec![
+        let expected_chunks = [
             ExpectedChunk {
                 hash: 17968276318003433923,
                 offset: 0,
