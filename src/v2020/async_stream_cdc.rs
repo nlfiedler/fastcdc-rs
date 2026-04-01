@@ -250,9 +250,8 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::v2020::MASKS;
-
     use super::AsyncStreamCDC;
+    use crate::v2020::MASKS;
 
     #[test]
     #[should_panic]
@@ -317,8 +316,6 @@ mod tests {
         digest: String,
     }
 
-    use md5::{Digest, Md5};
-
     #[cfg(all(feature = "futures", not(feature = "tokio")))]
     use futures::stream::StreamExt;
     #[cfg(all(feature = "tokio", not(feature = "futures")))]
@@ -338,31 +335,31 @@ mod tests {
                 hash: 17968276318003433923,
                 offset: 0,
                 length: 21325,
-                digest: "2bb52734718194617c957f5e07ee6054".into(),
+                digest: "261930e84e14c240210ae8c459acc4bb85dd52f1b91c868f2106dbc1ceb3acca".into(),
             },
             ExpectedChunk {
                 hash: 8197189939299398838,
                 offset: 21325,
                 length: 17140,
-                digest: "badfb0757fe081c20336902e7131f768".into(),
+                digest: "a01747cf21202f0068b8897d2be92aa4479b7ac7207b3baa5057b8ec75fa1c10".into(),
             },
             ExpectedChunk {
                 hash: 13019990849178155730,
                 offset: 38465,
                 length: 28084,
-                digest: "18412d7414de6eb42f638351711f729d".into(),
+                digest: "01e5305fb8f54d214ed2946843ea360fb9bb3f5df66ef3e34fb024d32ebcaee1".into(),
             },
             ExpectedChunk {
                 hash: 4509236223063678303,
                 offset: 66549,
                 length: 18217,
-                digest: "04fe1405fc5f960363bfcd834c056407".into(),
+                digest: "fc28c67b6ef846a841452a215bf704058f65cba5c1d78160398d3c2e046642f9".into(),
             },
             ExpectedChunk {
                 hash: 2504464741100432583,
                 offset: 84766,
                 length: 24700,
-                digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
+                digest: "f6996300fce24d3da56c81ea52e5f4f461ce6adb4496f65252996e1082471aac".into(),
             },
         ];
         let mut chunker = AsyncStreamCDC::new(contents.as_ref(), 4096, 16384, 65535);
@@ -377,11 +374,10 @@ mod tests {
             assert_eq!(chunk.hash, expected_chunks[index].hash);
             assert_eq!(chunk.offset, expected_chunks[index].offset);
             assert_eq!(chunk.length, expected_chunks[index].length);
-            let mut hasher = Md5::new();
+            let mut hasher = blake3::Hasher::new();
             hasher
                 .update(&contents[(chunk.offset as usize)..(chunk.offset as usize) + chunk.length]);
-            let table = hasher.finalize();
-            let digest = format!("{:x}", table);
+            let digest = format!("{}", hasher.finalize()).to_lowercase();
             assert_eq!(digest, expected_chunks[index].digest);
             index += 1;
         }

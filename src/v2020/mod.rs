@@ -823,7 +823,6 @@ impl<R: Read> Iterator for StreamCDC<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use md5::{Digest, Md5};
     use std::fs::{self, File};
 
     #[test]
@@ -1010,31 +1009,31 @@ mod tests {
                 hash: 17968276318003433923,
                 offset: 0,
                 length: 21325,
-                digest: "2bb52734718194617c957f5e07ee6054".into(),
+                digest: "261930e84e14c240210ae8c459acc4bb85dd52f1b91c868f2106dbc1ceb3acca".into(),
             },
             ExpectedChunk {
                 hash: 8197189939299398838,
                 offset: 21325,
                 length: 17140,
-                digest: "badfb0757fe081c20336902e7131f768".into(),
+                digest: "a01747cf21202f0068b8897d2be92aa4479b7ac7207b3baa5057b8ec75fa1c10".into(),
             },
             ExpectedChunk {
                 hash: 13019990849178155730,
                 offset: 38465,
                 length: 28084,
-                digest: "18412d7414de6eb42f638351711f729d".into(),
+                digest: "01e5305fb8f54d214ed2946843ea360fb9bb3f5df66ef3e34fb024d32ebcaee1".into(),
             },
             ExpectedChunk {
                 hash: 4509236223063678303,
                 offset: 66549,
                 length: 18217,
-                digest: "04fe1405fc5f960363bfcd834c056407".into(),
+                digest: "fc28c67b6ef846a841452a215bf704058f65cba5c1d78160398d3c2e046642f9".into(),
             },
             ExpectedChunk {
                 hash: 2504464741100432583,
                 offset: 84766,
                 length: 24700,
-                digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
+                digest: "f6996300fce24d3da56c81ea52e5f4f461ce6adb4496f65252996e1082471aac".into(),
             },
         ];
         let chunker = FastCDC::new(&contents, 4096, 16384, 65535);
@@ -1043,10 +1042,9 @@ mod tests {
             assert_eq!(chunk.hash, expected_chunks[index].hash);
             assert_eq!(chunk.offset, expected_chunks[index].offset as usize);
             assert_eq!(chunk.length, expected_chunks[index].length);
-            let mut hasher = Md5::new();
+            let mut hasher = blake3::Hasher::new();
             hasher.update(&contents[chunk.offset..chunk.offset + chunk.length]);
-            let table = hasher.finalize();
-            let digest = format!("{:x}", table);
+            let digest = format!("{}", hasher.finalize()).to_lowercase();
             assert_eq!(digest, expected_chunks[index].digest);
             index += 1;
         }
@@ -1121,31 +1119,31 @@ mod tests {
                 hash: 17968276318003433923,
                 offset: 0,
                 length: 21325,
-                digest: "2bb52734718194617c957f5e07ee6054".into(),
+                digest: "261930e84e14c240210ae8c459acc4bb85dd52f1b91c868f2106dbc1ceb3acca".into(),
             },
             ExpectedChunk {
                 hash: 8197189939299398838,
                 offset: 21325,
                 length: 17140,
-                digest: "badfb0757fe081c20336902e7131f768".into(),
+                digest: "a01747cf21202f0068b8897d2be92aa4479b7ac7207b3baa5057b8ec75fa1c10".into(),
             },
             ExpectedChunk {
                 hash: 13019990849178155730,
                 offset: 38465,
                 length: 28084,
-                digest: "18412d7414de6eb42f638351711f729d".into(),
+                digest: "01e5305fb8f54d214ed2946843ea360fb9bb3f5df66ef3e34fb024d32ebcaee1".into(),
             },
             ExpectedChunk {
                 hash: 4509236223063678303,
                 offset: 66549,
                 length: 18217,
-                digest: "04fe1405fc5f960363bfcd834c056407".into(),
+                digest: "fc28c67b6ef846a841452a215bf704058f65cba5c1d78160398d3c2e046642f9".into(),
             },
             ExpectedChunk {
                 hash: 2504464741100432583,
                 offset: 84766,
                 length: 24700,
-                digest: "1aa7ad95f274d6ba34a983946ebc5af3".into(),
+                digest: "f6996300fce24d3da56c81ea52e5f4f461ce6adb4496f65252996e1082471aac".into(),
             },
         ];
         let chunker = StreamCDC::new(file, 4096, 16384, 65535);
@@ -1156,10 +1154,9 @@ mod tests {
             assert_eq!(chunk.hash, expected_chunks[index].hash);
             assert_eq!(chunk.offset, expected_chunks[index].offset);
             assert_eq!(chunk.length, expected_chunks[index].length);
-            let mut hasher = Md5::new();
+            let mut hasher = blake3::Hasher::new();
             hasher.update(&chunk.data);
-            let table = hasher.finalize();
-            let digest = format!("{:x}", table);
+            let digest = format!("{}", hasher.finalize()).to_lowercase();
             assert_eq!(digest, expected_chunks[index].digest);
             index += 1;
         }
@@ -1177,37 +1174,37 @@ mod tests {
                 hash: 9312357714466240148,
                 offset: 0,
                 length: 10605,
-                digest: "09734863c8022bb0314f3de8c87a6d00".into(),
+                digest: "171b061b994e6bef828750fe5d702f905331bd8888e882709d3c999a0ec7060d".into(),
             },
             ExpectedChunk {
                 hash: 226910853333574584,
                 offset: 10605,
                 length: 55745,
-                digest: "4e49a6aa921341881f47ec0bbcdba6a9".into(),
+                digest: "fd6a37cbde8843b66f57f50edb0055eff7c821a497d7d851b522c1b5f93df181".into(),
             },
             ExpectedChunk {
                 hash: 12271755243986371352,
                 offset: 66350,
                 length: 11346,
-                digest: "f4b0cf33b1521be2a6af69df9bf90455".into(),
+                digest: "95356efb3159624ede331e5fda77adab64bbc0bc9a4b01d0166c584ac60a271f".into(),
             },
             ExpectedChunk {
                 hash: 14153975939352546047,
                 offset: 77696,
                 length: 5883,
-                digest: "f392b5df328ce6c43de7e19464a455b4".into(),
+                digest: "7ff8845854fc1333873c78b2d6ce137a8ac0514e56f9c93e9d4da035f9a944f1".into(),
             },
             ExpectedChunk {
                 hash: 5890158701071314778,
                 offset: 83579,
                 length: 11586,
-                digest: "a6053ce5cd98e6b717e7f97e71d743ba".into(),
+                digest: "503dec36fd5e032ae290f1b8291e5f6c5788814c1fc010f536b37cf9bee8bc2e".into(),
             },
             ExpectedChunk {
                 hash: 8981594897574481255,
                 offset: 95165,
                 length: 14301,
-                digest: "0db10fbf2685498e16e5440f5e697e2f".into(),
+                digest: "9c5a65dea6f8adeac9f616192feca3c50cbaa0e1a12eef315132e536dc3f2d44".into(),
             },
         ];
         let chunker =
@@ -1219,10 +1216,9 @@ mod tests {
             assert_eq!(chunk.hash, expected_chunks[index].hash);
             assert_eq!(chunk.offset, expected_chunks[index].offset);
             assert_eq!(chunk.length, expected_chunks[index].length);
-            let mut hasher = Md5::new();
+            let mut hasher = blake3::Hasher::new();
             hasher.update(&chunk.data);
-            let table = hasher.finalize();
-            let digest = format!("{:x}", table);
+            let digest = format!("{}", hasher.finalize()).to_lowercase();
             assert_eq!(digest, expected_chunks[index].digest);
             index += 1;
         }
