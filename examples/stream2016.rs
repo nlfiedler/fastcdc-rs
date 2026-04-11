@@ -12,7 +12,7 @@ fn main() {
             arg!(
                 -s --size <SIZE> "The desired average size of the chunks."
             )
-            .value_parser(value_parser!(u32)),
+            .value_parser(value_parser!(usize)),
         )
         .arg(
             Arg::new("INPUT")
@@ -21,7 +21,7 @@ fn main() {
                 .index(1),
         )
         .get_matches();
-    let size = matches.get_one::<u32>("size").unwrap_or(&131072);
+    let size = matches.get_one::<usize>("size").unwrap_or(&131072);
     let avg_size = *size;
     let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).expect("cannot open file!");

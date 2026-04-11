@@ -76,8 +76,8 @@ pub struct AsyncStreamCDC<R> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: Box<[u64; 256]>,
-    gear_ls: Box<[u64; 256]>,
+    gear: Cow<'static, [u64]>,
+    gear_ls: Cow<'static, [u64]>,
 }
 
 impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
@@ -86,7 +86,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
-    pub fn new(source: R, min_size: u32, avg_size: u32, max_size: u32) -> Self {
+    pub fn new(source: R, min_size: usize, avg_size: usize, max_size: usize) -> Self {
         Self::with_level(source, min_size, avg_size, max_size, Normalization::Level1)
     }
 
@@ -95,9 +95,9 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
     ///
     pub fn with_level(
         source: R,
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
     ) -> Self {
         Self::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
@@ -109,33 +109,33 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
     ///
     pub fn with_level_and_seed(
         source: R,
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
         seed: u64,
     ) -> Self {
-        assert!(min_size >= MINIMUM_MIN);
-        assert!(min_size <= MINIMUM_MAX);
-        assert!(avg_size >= AVERAGE_MIN);
-        assert!(avg_size <= AVERAGE_MAX);
-        assert!(max_size >= MAXIMUM_MIN);
-        assert!(max_size <= MAXIMUM_MAX);
+        debug_assert!(min_size >= MINIMUM_MIN);
+        debug_assert!(min_size <= MINIMUM_MAX);
+        debug_assert!(avg_size >= AVERAGE_MIN);
+        debug_assert!(avg_size <= AVERAGE_MAX);
+        debug_assert!(max_size >= MAXIMUM_MIN);
+        debug_assert!(max_size <= MAXIMUM_MAX);
         let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
-            buffer: vec![0_u8; max_size as usize],
-            capacity: max_size as usize,
+            buffer: vec![0_u8; max_size],
+            capacity: max_size,
             length: 0,
             source,
             eof: false,
             processed: 0,
-            min_size: min_size as usize,
-            avg_size: avg_size as usize,
-            max_size: max_size as usize,
+            min_size,
+            avg_size,
+            max_size,
             mask_s,
             mask_l,
             mask_s_ls: mask_s << 1,
@@ -176,9 +176,10 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
                 count, self.length
             )))
         } else {
-            let data = self.buffer.drain(..count).collect::<Vec<u8>>();
+            let mut data = Vec::with_capacity(count);
+            data.extend_from_slice(&self.buffer[..count]);
+            self.buffer.copy_within(count..self.length, 0);
             self.length -= count;
-            self.buffer.resize(self.capacity, 0_u8);
             Ok(data)
         }
     }

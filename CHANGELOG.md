@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.0.0] - 2026-04-11
+
+Many changes suggested by Claude Code that seem worth making despite breaking the API. The changes needed are minor, just changing `u32` to `usize` for the common use case.
+
+### Breaking Changes
+**Size parameter types changed from `u32` to `usize`** across all three modules (`v2016`, `v2020`, `ronomon`):
+- All public constructors: `new()`, `with_level()`, `with_level_and_seed()` for `FastCDC`, `StreamCDC`, and `AsyncStreamCDC`
+- Public constants `MINIMUM_MIN`, `MINIMUM_MAX`, `AVERAGE_MIN`, `AVERAGE_MAX`, `MAXIMUM_MIN`, `MAXIMUM_MAX` are now `usize` instead of `u32`
+- `cut_gear()` gear parameters changed from `&[u64; 256]` to `&[u64]`
+- `get_gear_with_seed()` return type changed from `(Box<[u64; 256]>, Box<[u64; 256]>)` to `(Cow<'static, [u64]>, Cow<'static, [u64]>)`
+- `Error::Display` output format changed (e.g. `"chunker error: Empty"` → `"no more data"`)
+- Bounds checks on chunk size parameters changed from `assert!()` to `debug_assert!()`, meaning invalid sizes will no longer panic in release builds
+### Minor Changes
+- `MASKS` constant in `v2016` is now `pub` (was private)
+- `Normalization` enum in both `v2016` and `v2020` now derives `Eq` and `PartialEq`
+- `Normalization::bits()` in `v2016` is now `pub` (was private), and got a doc comment in `v2020`
+### Bug Fixes & Performance Improvements
+- **`size_hint()` corrected** in all three iterators: the lower bound was incorrectly returning the upper bound; now returns `1.min(upper_bound)`, which is semantically correct
+- **Buffer extraction optimized** in `StreamCDC` and `AsyncStreamCDC`: replaced `drain(..).collect()` + `resize()` with `extend_from_slice()` + `copy_within()`, avoiding unnecessary reallocation
+- **`get_gear_with_seed()` optimized**: when `seed == 0`, the static GEAR tables are borrowed directly via `Cow::Borrowed` instead of heap-allocating a copy
+- **`mask()` in `ronomon`** changed from `2u32.pow(bits) - 1` to `(1u32 << bits) - 1` (equivalent but avoids potential debug-mode panics on overflow)
+
 ## [3.2.1] - 2025-04-17
 ### Fixed
 - bits0rcerer: make `get_gear_with_seed()` public so it is usuable outside of

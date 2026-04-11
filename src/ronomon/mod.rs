@@ -2,8 +2,8 @@
 // Copyright (c) 2020 Nathan Fiedler
 //
 
-//! This module implements a variation of the FastCDC algorithm using
-//! 31-integers and right shifts instead of left shifts.
+//! This module implements a variation of the FastCDC algorithm using 31-bit
+//! integers and right shifts instead of left shifts.
 //!
 //! The explanation below is copied from
 //! [ronomon/deduplication](https://github.com/ronomon/deduplication) since this
@@ -106,12 +106,12 @@ impl<'a> FastCDC<'a> {
         max_size: usize,
         eof: bool,
     ) -> Self {
-        assert!(min_size >= MINIMUM_MIN);
-        assert!(min_size <= MINIMUM_MAX);
-        assert!(avg_size >= AVERAGE_MIN);
-        assert!(avg_size <= AVERAGE_MAX);
-        assert!(max_size >= MAXIMUM_MIN);
-        assert!(max_size <= MAXIMUM_MAX);
+        debug_assert!(min_size >= MINIMUM_MIN);
+        debug_assert!(min_size <= MINIMUM_MAX);
+        debug_assert!(avg_size >= AVERAGE_MIN);
+        debug_assert!(avg_size <= AVERAGE_MAX);
+        debug_assert!(max_size >= MAXIMUM_MIN);
+        debug_assert!(max_size <= MAXIMUM_MAX);
         let bits = (avg_size as u32).ilog2();
         let mask_s = mask(bits + 1);
         let mask_l = mask(bits - 1);
@@ -199,11 +199,8 @@ impl Iterator for FastCDC<'_> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // NOTE: This intentionally returns the upper bound for both `size_hint` values, as the upper bound
-        // doesn't actually seem to get used by `std` and using the actual lower bound is practically
-        // guaranteed to require a second capacity growth.
         let upper_bound = self.bytes_remaining / self.min_size;
-        (upper_bound, Some(upper_bound))
+        (1.min(upper_bound), Some(upper_bound))
     }
 }
 
@@ -231,7 +228,7 @@ fn center_size(average: usize, minimum: usize, source_size: usize) -> usize {
 fn mask(bits: u32) -> u32 {
     debug_assert!(bits >= 1);
     debug_assert!(bits <= 31);
-    2u32.pow(bits) - 1
+    (1u32 << bits) - 1
 }
 
 //

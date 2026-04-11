@@ -42,6 +42,7 @@
 //! tables. Modifying the GEAR hash is useful for preventing attacks based on
 //! monitoring the chunking behavior and using that information to infer other
 //! attributes of the data that would otherwise be unknown.
+use std::borrow::Cow;
 use std::fmt;
 use std::io::Read;
 
@@ -51,17 +52,17 @@ mod async_stream_cdc;
 pub use async_stream_cdc::*;
 
 /// Smallest acceptable value for the minimum chunk size.
-pub const MINIMUM_MIN: u32 = 64;
+pub const MINIMUM_MIN: usize = 64;
 /// Largest acceptable value for the minimum chunk size.
-pub const MINIMUM_MAX: u32 = 1_048_576;
+pub const MINIMUM_MAX: usize = 1_048_576;
 /// Smallest acceptable value for the average chunk size.
-pub const AVERAGE_MIN: u32 = 256;
+pub const AVERAGE_MIN: usize = 256;
 /// Largest acceptable value for the average chunk size.
-pub const AVERAGE_MAX: u32 = 4_194_304;
+pub const AVERAGE_MAX: usize = 4_194_304;
 /// Smallest acceptable value for the maximum chunk size.
-pub const MAXIMUM_MIN: u32 = 1024;
+pub const MAXIMUM_MIN: usize = 1024;
 /// Largest acceptable value for the maximum chunk size.
-pub const MAXIMUM_MAX: u32 = 16_777_216;
+pub const MAXIMUM_MAX: usize = 16_777_216;
 
 //
 // Masks for each of the desired number of bits, where 0 through 5 are unused.
@@ -254,21 +255,25 @@ const GEAR_LS: [u64; 256] = [
 ///
 /// This will copy the original GEAR table, and its left-shifted twin, and
 /// peform a bitwise exclusive OR on the values using the given seed. If the
-/// seed is zero, no computation is performed.
+/// seed is zero, no copying or computation is performed.
 ///
-pub fn get_gear_with_seed(seed: u64) -> (Box<[u64; 256]>, Box<[u64; 256]>) {
-    let mut gear = Box::new(GEAR);
-    let mut gear_ls = Box::new(GEAR_LS);
-    if seed > 0 {
-        for v in &mut *gear {
-            *v ^= seed
+pub fn get_gear_with_seed(seed: u64) -> (Cow<'static, [u64]>, Cow<'static, [u64]>) {
+    if seed == 0 {
+        // No allocation: borrow the 'static tables directly.
+        (Cow::Borrowed(&GEAR), Cow::Borrowed(&GEAR_LS))
+    } else {
+        let mut gear = GEAR; // copy onto the stack (2 KB)
+        let mut gear_ls = GEAR_LS; // copy onto the stack (2 KB)
+        for v in &mut gear {
+            *v ^= seed;
         }
         let seed_ls = seed << 1;
-        for v in &mut *gear_ls {
-            *v ^= seed_ls
+        for v in &mut gear_ls {
+            *v ^= seed_ls;
         }
+        // Move the modified stack copies into heap-owned Vecs.
+        (Cow::Owned(gear.into()), Cow::Owned(gear_ls.into()))
     }
-    (gear, gear_ls)
 }
 
 ///
@@ -305,8 +310,8 @@ pub fn cut_gear(
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: &[u64; 256],
-    gear_ls: &[u64; 256],
+    gear: &[u64],
+    gear_ls: &[u64],
 ) -> (u64, usize) {
     let mut remaining = source.len();
     if remaining <= min_size {
@@ -364,7 +369,7 @@ pub fn cut_gear(
 /// data being smaller than the minimum chunk size, which results in a hash
 /// value of zero since no calculations are performed for sub-minimum chunks.
 ///
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Normalization {
     /// No chunk size normalization, produces a wide range of chunk sizes.
     Level0,
@@ -377,6 +382,7 @@ pub enum Normalization {
 }
 
 impl Normalization {
+    /// Convert the level to a numeric value (Level0 -> 0, Level1 -> 1, etc).
     pub fn bits(&self) -> u32 {
         match self {
             Normalization::Level0 => 0,
@@ -442,8 +448,8 @@ pub struct FastCDC<'a> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: Box<[u64; 256]>,
-    gear_ls: Box<[u64; 256]>,
+    gear: Cow<'static, [u64]>,
+    gear_ls: Cow<'static, [u64]>,
 }
 
 impl<'a> FastCDC<'a> {
@@ -452,7 +458,7 @@ impl<'a> FastCDC<'a> {
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
-    pub fn new(source: &'a [u8], min_size: u32, avg_size: u32, max_size: u32) -> Self {
+    pub fn new(source: &'a [u8], min_size: usize, avg_size: usize, max_size: usize) -> Self {
         FastCDC::with_level(source, min_size, avg_size, max_size, Normalization::Level1)
     }
 
@@ -461,9 +467,9 @@ impl<'a> FastCDC<'a> {
     ///
     pub fn with_level(
         source: &'a [u8],
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
     ) -> Self {
         FastCDC::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
@@ -475,18 +481,18 @@ impl<'a> FastCDC<'a> {
     ///
     pub fn with_level_and_seed(
         source: &'a [u8],
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
         seed: u64,
     ) -> Self {
-        assert!(min_size >= MINIMUM_MIN);
-        assert!(min_size <= MINIMUM_MAX);
-        assert!(avg_size >= AVERAGE_MIN);
-        assert!(avg_size <= AVERAGE_MAX);
-        assert!(max_size >= MAXIMUM_MIN);
-        assert!(max_size <= MAXIMUM_MAX);
+        debug_assert!(min_size >= MINIMUM_MIN);
+        debug_assert!(min_size <= MINIMUM_MAX);
+        debug_assert!(avg_size >= AVERAGE_MIN);
+        debug_assert!(avg_size <= AVERAGE_MAX);
+        debug_assert!(max_size >= MAXIMUM_MIN);
+        debug_assert!(max_size <= MAXIMUM_MAX);
         let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
@@ -496,9 +502,9 @@ impl<'a> FastCDC<'a> {
             source,
             processed: 0,
             remaining: source.len(),
-            min_size: min_size as usize,
-            avg_size: avg_size as usize,
-            max_size: max_size as usize,
+            min_size,
+            avg_size,
+            max_size,
             mask_s,
             mask_l,
             mask_s_ls: mask_s << 1,
@@ -564,12 +570,8 @@ impl Iterator for FastCDC<'_> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // NOTE: This intentionally returns the upper bound for both `size_hint`
-        // values, as the upper bound doesn't actually seem to get used by `std`
-        // and using the actual lower bound is practically guaranteed to require
-        // a second capacity growth.
         let upper_bound = self.remaining / self.min_size;
-        (upper_bound, Some(upper_bound))
+        (1.min(upper_bound), Some(upper_bound))
     }
 }
 
@@ -588,7 +590,11 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "chunker error: {self:?}")
+        match self {
+            Error::Empty => write!(f, "no more data"),
+            Error::IoError(e) => write!(f, "I/O error: {e}"),
+            Error::Other(s) => write!(f, "{s}"),
+        }
     }
 }
 
@@ -665,8 +671,8 @@ pub struct StreamCDC<R: Read> {
     mask_l: u64,
     mask_s_ls: u64,
     mask_l_ls: u64,
-    gear: Box<[u64; 256]>,
-    gear_ls: Box<[u64; 256]>,
+    gear: Cow<'static, [u64]>,
+    gear_ls: Cow<'static, [u64]>,
 }
 
 impl<R: Read> StreamCDC<R> {
@@ -675,7 +681,7 @@ impl<R: Read> StreamCDC<R> {
     ///
     /// Uses chunk size normalization level 1 by default.
     ///
-    pub fn new(source: R, min_size: u32, avg_size: u32, max_size: u32) -> Self {
+    pub fn new(source: R, min_size: usize, avg_size: usize, max_size: usize) -> Self {
         StreamCDC::with_level(source, min_size, avg_size, max_size, Normalization::Level1)
     }
 
@@ -684,9 +690,9 @@ impl<R: Read> StreamCDC<R> {
     ///
     pub fn with_level(
         source: R,
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
     ) -> Self {
         StreamCDC::with_level_and_seed(source, min_size, avg_size, max_size, level, 0)
@@ -697,33 +703,33 @@ impl<R: Read> StreamCDC<R> {
     ///
     pub fn with_level_and_seed(
         source: R,
-        min_size: u32,
-        avg_size: u32,
-        max_size: u32,
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
         level: Normalization,
         seed: u64,
     ) -> Self {
-        assert!(min_size >= MINIMUM_MIN);
-        assert!(min_size <= MINIMUM_MAX);
-        assert!(avg_size >= AVERAGE_MIN);
-        assert!(avg_size <= AVERAGE_MAX);
-        assert!(max_size >= MAXIMUM_MIN);
-        assert!(max_size <= MAXIMUM_MAX);
+        debug_assert!(min_size >= MINIMUM_MIN);
+        debug_assert!(min_size <= MINIMUM_MAX);
+        debug_assert!(avg_size >= AVERAGE_MIN);
+        debug_assert!(avg_size <= AVERAGE_MAX);
+        debug_assert!(max_size >= MAXIMUM_MIN);
+        debug_assert!(max_size <= MAXIMUM_MAX);
         let bits = avg_size.ilog2();
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
-            buffer: vec![0_u8; max_size as usize],
-            capacity: max_size as usize,
+            buffer: vec![0_u8; max_size],
+            capacity: max_size,
             length: 0,
             source,
             eof: false,
             processed: 0,
-            min_size: min_size as usize,
-            avg_size: avg_size as usize,
-            max_size: max_size as usize,
+            min_size,
+            avg_size,
+            max_size,
             mask_s,
             mask_l,
             mask_s_ls: mask_s << 1,
@@ -764,9 +770,10 @@ impl<R: Read> StreamCDC<R> {
                 count, self.length
             )))
         } else {
-            let data = self.buffer.drain(..count).collect::<Vec<u8>>();
+            let mut data = Vec::with_capacity(count);
+            data.extend_from_slice(&self.buffer[..count]);
+            self.buffer.copy_within(count..self.length, 0);
             self.length -= count;
-            self.buffer.resize(self.capacity, 0_u8);
             Ok(data)
         }
     }
@@ -1105,7 +1112,7 @@ mod tests {
     #[test]
     fn test_error_fmt() {
         let err = Error::Empty;
-        assert_eq!(format!("{err}"), "chunker error: Empty");
+        assert_eq!(format!("{err}"), "no more data");
     }
 
     #[test]

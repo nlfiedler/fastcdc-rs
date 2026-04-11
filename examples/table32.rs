@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
-use aes::cipher::{KeyIvInit, StreamCipher, generic_array::GenericArray};
+use aes::cipher::{Array, KeyIvInit, StreamCipher};
 use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
 
@@ -20,8 +20,8 @@ fn generate() -> String {
     // nonce (a.k.a. initialization vector) of all zeroes. This is effectively
     // noise, but it is predictable noise, so the results are always the same.
     let mut table = [0u8; 1024];
-    let key = GenericArray::from([0u8; 32]);
-    let nonce = GenericArray::from([0u8; 16]);
+    let key = Array::from([0u8; 32]);
+    let nonce = Array::from([0u8; 16]);
     let mut cipher = Aes256Ctr32BE::new(&key, &nonce);
     cipher.apply_keystream(&mut table);
     let mut result = String::new();
