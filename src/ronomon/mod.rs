@@ -112,7 +112,7 @@ impl<'a> FastCDC<'a> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = (avg_size as u32).ilog2();
+        let bits = logarithm2(avg_size);
         let mask_s = mask(bits + 1);
         let mask_l = mask(bits - 1);
         Self {
@@ -229,6 +229,13 @@ fn mask(bits: u32) -> u32 {
     debug_assert!(bits >= 1);
     debug_assert!(bits <= 31);
     (1u32 << bits) - 1
+}
+
+// Rounded base-2 logarithm; matches the behavior pre-4.0.0 so that mask
+// selection picks the bucket whose target chunk size is closest to `value`,
+// rather than always rounding down (which `usize::ilog2` does).
+fn logarithm2(value: usize) -> u32 {
+    (value as f64).log2().round() as u32
 }
 
 //

@@ -202,6 +202,13 @@ fn cut(
     (hash, index)
 }
 
+// Rounded base-2 logarithm; matches the behavior pre-4.0.0 so that mask
+// selection picks the bucket whose target chunk size is closest to `value`,
+// rather than always rounding down (which `usize::ilog2` does).
+fn logarithm2(value: usize) -> u32 {
+    (value as f64).log2().round() as u32
+}
+
 ///
 /// The level for the normalized chunking used by FastCDC and StreamCDC.
 ///
@@ -323,7 +330,7 @@ impl<'a> FastCDC<'a> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = avg_size.ilog2();
+        let bits = logarithm2(avg_size);
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];
@@ -517,7 +524,7 @@ impl<R: Read> StreamCDC<R> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = avg_size.ilog2();
+        let bits = logarithm2(avg_size);
         let normalization = level.bits();
         let mask_s = MASKS[(bits + normalization) as usize];
         let mask_l = MASKS[(bits - normalization) as usize];

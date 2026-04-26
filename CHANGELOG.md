@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.0.1] - 2026-04-26
+### Fixed
+- Restore rounded-log mask selection. The 4.0.0 cleanup replaced the private
+  `logarithm2()` helper (rounded `log2`) with `usize::ilog2()` (floored `log2`),
+  which silently changed cut points for any `avg_size` that is not a power of
+  two. Power-of-two sizes were unaffected. Cut points now match 3.2.1 again.
+
 ## [4.0.0] - 2026-04-11
 
 Many changes suggested by Claude Code that seem worth making despite breaking the API. The changes needed are minor, just changing `u32` to `usize` for the common use case.
