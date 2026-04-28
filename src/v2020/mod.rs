@@ -840,6 +840,21 @@ mod tests {
     use std::fs::{self, File};
 
     #[test]
+    fn test_logarithm2() {
+        // Powers of two: rounded and floored log2 agree.
+        assert_eq!(logarithm2(1024), 10);
+        assert_eq!(logarithm2(16384), 14);
+        assert_eq!(logarithm2(65536), 16);
+        // Non-powers of two: must round to nearest, not floor. These are the
+        // cases where usize::ilog2 would silently pick the wrong mask bucket
+        // (regression guard for the 4.0.0 -> 4.0.1 fix).
+        assert_eq!(logarithm2(1500), 11); // log2 ~ 10.55, rounds up
+        assert_eq!(logarithm2(12288), 14); // log2 ~ 13.585, rounds up
+        assert_eq!(logarithm2(24576), 15); // log2 ~ 14.585, rounds up
+        assert_eq!(logarithm2(1100), 10); // log2 ~ 10.103, rounds down
+    }
+
+    #[test]
     #[should_panic]
     fn test_minimum_too_low() {
         let array = [0u8; 1024];
