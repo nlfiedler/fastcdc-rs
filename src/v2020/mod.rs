@@ -744,10 +744,18 @@ impl Chunker {
     /// without materializing the chunk slice. Use this when you only need the
     /// offsets/lengths (e.g. to build an extent map).
     pub fn for_each_boundary(&self, source: &[u8], mut f: impl FnMut(usize, usize, u64)) {
+        // Convert the GEAR tables to fixed-size arrays once, here, instead of
+        // re-running `try_into` inside the public `cut_gear` on every chunk.
+        let gear: &[u64; 256] = (&*self.gear)
+            .try_into()
+            .expect("GEAR table must have 256 entries");
+        let gear_ls: &[u64; 256] = (&*self.gear_ls)
+            .try_into()
+            .expect("GEAR_LS table must have 256 entries");
         let mut processed = 0usize;
         let mut remaining = source.len();
         while remaining > 0 {
-            let (hash, count) = cut_gear(
+            let (hash, count) = cut_gear_arr(
                 &source[processed..processed + remaining],
                 self.min_size,
                 self.avg_size,
@@ -756,17 +764,22 @@ impl Chunker {
                 self.mask_l,
                 self.mask_s_ls,
                 self.mask_l_ls,
-                &self.gear,
-                &self.gear_ls,
+                gear,
+                gear_ls,
             );
-            let cutpoint = processed + count;
-            if cutpoint == processed {
+            // `cut_gear` always makes progress on a non-empty slice for a valid
+            // `min_size` (>= MINIMUM_MIN). A zero count is only reachable with an
+            // invalid `min_size`, which the constructor already debug-asserts;
+            // if it ever happens, emit the remainder as one final chunk rather
+            // than silently dropping the rest of the source.
+            if count == 0 {
+                debug_assert!(false, "cut_gear made no progress on a non-empty source");
+                f(processed, remaining, hash);
                 break;
             }
-            let length = cutpoint - processed;
-            f(processed, length, hash);
-            processed = cutpoint;
-            remaining -= length;
+            f(processed, count, hash);
+            processed += count;
+            remaining -= count;
         }
     }
 }
@@ -1371,6 +1384,35 @@ mod tests {
             got.push(Chunk { hash, offset, length });
         });
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn test_chunker_covers_every_byte() {
+        // Guards against silently dropping the tail: the emitted chunks must be
+        // contiguous and cover the whole source exactly, for a range of sizes
+        // including sub-min and all-zeros inputs.
+        let fixture = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+        let cases: [&[u8]; 5] = [
+            &[],
+            &[0u8; 10],          // shorter than min_size -> one (0, len) chunk
+            &[0u8; 50_000],      // all zeros -> max-size chunks
+            &fixture,
+            &fixture[..4096],    // exactly min_size
+        ];
+        let chunker = Chunker::new(4096, 16384, 65535);
+        for src in cases {
+            let mut next = 0usize;
+            let mut total = 0usize;
+            chunker.for_each_chunk(src, |offset, length, _hash, bytes| {
+                assert_eq!(offset, next, "chunks must be contiguous");
+                assert_eq!(bytes.len(), length);
+                assert_eq!(bytes, &src[offset..offset + length]);
+                next += length;
+                total += length;
+            });
+            assert_eq!(total, src.len(), "every byte must be emitted exactly once");
+            assert_eq!(next, src.len());
+        }
     }
 
     #[test]
