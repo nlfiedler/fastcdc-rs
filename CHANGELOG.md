@@ -5,6 +5,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Performance
+- **`v2020::cut_gear` inner loop: restored array-typed GEAR lookups.** The 4.0.0
+  change from `&[u64; 256]` to `&[u64]` reintroduced a `panic_bounds_check` on
+  every GEAR table lookup in the hot scan (4 of them per loop iteration).
+  `cut_gear` now converts the tables to `&[u64; 256]` once via `try_into`, which
+  the compiler can prove in-bounds for a `u8`-derived index. Cut points and
+  hashes are unchanged (the existing fixture tests pin them); emitted asm drops
+  from 8 to 4 `panic_bounds_check` sites in `cut_gear`, and an interleaved A/B
+  measured ~7–14% throughput on random/text/zeros across chunk sizes (M1 Pro and
+  a dedicated-CPU x86 VM). The `&[u64]`/`Cow` public signature is unchanged.
+### Added
+- **`v2020::Chunker`** — a reusable, source-independent chunker config with
+  `for_each_chunk` (zero-allocation; hands the callback the borrowed chunk slice,
+  e.g. for per-segment hashing) and `for_each_boundary` (offset/len/hash only).
+  Additive; produces identical cut points to `v2020::FastCDC`.
+
 ## [4.0.1] - 2026-04-26
 ### Fixed
 - Restore rounded-log mask selection. The 4.0.0 cleanup replaced the private
