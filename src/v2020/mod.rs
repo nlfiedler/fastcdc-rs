@@ -300,6 +300,12 @@ pub fn cut(
 ///
 /// Find the next chunk cut point in the source using the given GEAR tables.
 ///
+/// The GEAR tables are, by construction of the gear hash, always 256 entries
+/// long. This function requires exactly 256 entries and will panic otherwise;
+/// converting to a fixed-size array reference is what lets the compiler prove
+/// the per-byte table lookups are in-bounds (no `panic_bounds_check` in the
+/// hot scan loop).
+///
 #[allow(clippy::too_many_arguments)]
 pub fn cut_gear(
     source: &[u8],
@@ -313,6 +319,46 @@ pub fn cut_gear(
     gear: &[u64],
     gear_ls: &[u64],
 ) -> (u64, usize) {
+    let gear: &[u64; 256] = gear.try_into().expect("GEAR table must have 256 entries");
+    let gear_ls: &[u64; 256] = gear_ls
+        .try_into()
+        .expect("GEAR_LS table must have 256 entries");
+    cut_gear_arr(
+        source, min_size, avg_size, max_size, mask_s, mask_l, mask_s_ls, mask_l_ls, gear, gear_ls,
+    )
+}
+
+///
+/// Inner cut routine over fixed-size GEAR arrays.
+///
+/// Identical math and cut points to the original `cut_gear`. The change is
+/// bounds-check-only (no behavior change):
+///   - GEAR tables are `&[u64; 256]`, indexed by a `u8`-derived value, so the
+///     two table lookups per iteration carry no bounds check. This removes 4 of
+///     the 8 `panic_bounds_check` sites the original had (verified in asm).
+///
+/// The source is also narrowed once to `&source[..remaining]` with hoisted
+/// loop bounds. This does NOT eliminate the `src[a]`/`src[a + 1]` bounds checks
+/// — the compiler will not prove `2 * index + 1 < remaining` through the loop —
+/// so 4 source-index checks remain. That is fine: `llvm-mca` shows the loop is
+/// bound by the hash dependency chain (`shl` -> `add` -> `add`), so those
+/// checks land in spare execution slots and cost ~0 cycles. The narrowing is
+/// kept for clarity and because it is harmless. See PERF_NOTES.md.
+///
+#[allow(clippy::too_many_arguments)]
+#[inline]
+fn cut_gear_arr(
+    source: &[u8],
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
+    mask_s: u64,
+    mask_l: u64,
+    mask_s_ls: u64,
+    mask_l_ls: u64,
+    gear: &[u64; 256],
+    gear_ls: &[u64; 256],
+) -> (u64, usize) {
     let mut remaining = source.len();
     if remaining <= min_size {
         return (0, remaining);
@@ -323,27 +369,35 @@ pub fn cut_gear(
     } else if remaining < center {
         center = remaining;
     }
+    // Narrow once to the live window. Note: this does NOT remove the per-byte
+    // source bounds check (the compiler won't prove `2*index+1 < remaining`
+    // here); 4 such checks remain. They are free in practice — the loop is
+    // latency-bound on the hash chain, not throughput-bound. The real win is
+    // the `&[u64; 256]` GEAR tables above, which drop the table-lookup checks.
+    let src = &source[..remaining];
+    let limit1 = center / 2;
+    let limit2 = remaining / 2;
     let mut index = min_size / 2;
     let mut hash: u64 = 0;
-    while index < center / 2 {
+    while index < limit1 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(gear_ls[source[a] as usize]);
+        hash = (hash << 2).wrapping_add(gear_ls[src[a] as usize]);
         if (hash & mask_s_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(gear[source[a + 1] as usize]);
+        hash = hash.wrapping_add(gear[src[a + 1] as usize]);
         if (hash & mask_s) == 0 {
             return (hash, a + 1);
         }
         index += 1;
     }
-    while index < remaining / 2 {
+    while index < limit2 {
         let a = index * 2;
-        hash = (hash << 2).wrapping_add(gear_ls[source[a] as usize]);
+        hash = (hash << 2).wrapping_add(gear_ls[src[a] as usize]);
         if (hash & mask_l_ls) == 0 {
             return (hash, a);
         }
-        hash = hash.wrapping_add(gear[source[a + 1] as usize]);
+        hash = hash.wrapping_add(gear[src[a + 1] as usize]);
         if (hash & mask_l) == 0 {
             return (hash, a + 1);
         }
@@ -579,6 +633,141 @@ impl Iterator for FastCDC<'_> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let upper_bound = self.remaining / self.min_size;
         (1.min(upper_bound), Some(upper_bound))
+    }
+}
+
+///
+/// A reusable, source-independent chunker configuration.
+///
+/// [`FastCDC`] borrows the source for its whole lifetime, which is awkward when
+/// you want to chunk many in-memory buffers with the same parameters: you pay
+/// the (small) mask/gear setup on every `FastCDC::new`. `Chunker` precomputes
+/// that setup once and applies it to any number of slices via a zero-allocation
+/// callback. The cut points are identical to [`FastCDC`] with the same
+/// parameters — `Chunker` is just a different way to drive the same `cut_gear`.
+///
+/// The callback forms are useful when:
+///   * you already have the bytes in memory (no need for the [`StreamCDC`]
+///     buffer + per-chunk `Vec` allocation), and
+///   * you want to hash each segment yourself (e.g. SHA-256 per chunk) without
+///     the chunker allocating or copying — [`for_each_chunk`](Chunker::for_each_chunk)
+///     hands you the exact `&[u8]` slice for each chunk.
+///
+/// ```
+/// use fastcdc::v2020::Chunker;
+/// # let data = vec![0u8; 200_000];
+/// let chunker = Chunker::new(4096, 16384, 65535);
+/// let mut total = 0usize;
+/// chunker.for_each_chunk(&data, |offset, length, _hash, bytes| {
+///     debug_assert_eq!(bytes.len(), length);
+///     debug_assert_eq!(&data[offset..offset + length], bytes);
+///     // e.g. let digest = sha2::Sha256::digest(bytes);
+///     total += length;
+/// });
+/// assert_eq!(total, data.len());
+/// ```
+///
+#[derive(Debug, Clone)]
+pub struct Chunker {
+    min_size: usize,
+    avg_size: usize,
+    max_size: usize,
+    mask_s: u64,
+    mask_l: u64,
+    mask_s_ls: u64,
+    mask_l_ls: u64,
+    gear: Cow<'static, [u64]>,
+    gear_ls: Cow<'static, [u64]>,
+}
+
+impl Chunker {
+    /// Construct a `Chunker` using normalization level 1 (the default).
+    pub fn new(min_size: usize, avg_size: usize, max_size: usize) -> Self {
+        Self::with_level(min_size, avg_size, max_size, Normalization::Level1)
+    }
+
+    /// Construct a `Chunker` with the given normalization level.
+    pub fn with_level(
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
+        level: Normalization,
+    ) -> Self {
+        Self::with_level_and_seed(min_size, avg_size, max_size, level, 0)
+    }
+
+    /// Construct a `Chunker` with the given normalization level and GEAR seed.
+    pub fn with_level_and_seed(
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
+        level: Normalization,
+        seed: u64,
+    ) -> Self {
+        debug_assert!(min_size >= MINIMUM_MIN);
+        debug_assert!(min_size <= MINIMUM_MAX);
+        debug_assert!(avg_size >= AVERAGE_MIN);
+        debug_assert!(avg_size <= AVERAGE_MAX);
+        debug_assert!(max_size >= MAXIMUM_MIN);
+        debug_assert!(max_size <= MAXIMUM_MAX);
+        let bits = logarithm2(avg_size);
+        let normalization = level.bits();
+        let mask_s = MASKS[(bits + normalization) as usize];
+        let mask_l = MASKS[(bits - normalization) as usize];
+        let (gear, gear_ls) = get_gear_with_seed(seed);
+        Self {
+            min_size,
+            avg_size,
+            max_size,
+            mask_s,
+            mask_l,
+            mask_s_ls: mask_s << 1,
+            mask_l_ls: mask_l << 1,
+            gear,
+            gear_ls,
+        }
+    }
+
+    /// Invoke `f(offset, length, hash, &source[offset..offset + length])` for
+    /// each chunk in `source`, in order. Allocation-free: the slice handed to
+    /// the callback borrows directly from `source`.
+    ///
+    /// Equivalent cut points to iterating [`FastCDC`] over the same source with
+    /// the same parameters.
+    pub fn for_each_chunk(&self, source: &[u8], mut f: impl FnMut(usize, usize, u64, &[u8])) {
+        self.for_each_boundary(source, |offset, length, hash| {
+            f(offset, length, hash, &source[offset..offset + length]);
+        });
+    }
+
+    /// Invoke `f(offset, length, hash)` for each chunk boundary in `source`,
+    /// without materializing the chunk slice. Use this when you only need the
+    /// offsets/lengths (e.g. to build an extent map).
+    pub fn for_each_boundary(&self, source: &[u8], mut f: impl FnMut(usize, usize, u64)) {
+        let mut processed = 0usize;
+        let mut remaining = source.len();
+        while remaining > 0 {
+            let (hash, count) = cut_gear(
+                &source[processed..processed + remaining],
+                self.min_size,
+                self.avg_size,
+                self.max_size,
+                self.mask_s,
+                self.mask_l,
+                self.mask_s_ls,
+                self.mask_l_ls,
+                &self.gear,
+                &self.gear_ls,
+            );
+            let cutpoint = processed + count;
+            if cutpoint == processed {
+                break;
+            }
+            let length = cutpoint - processed;
+            f(processed, length, hash);
+            processed = cutpoint;
+            remaining -= length;
+        }
     }
 }
 
@@ -840,21 +1029,6 @@ mod tests {
     use std::fs::{self, File};
 
     #[test]
-    fn test_logarithm2() {
-        // Powers of two: rounded and floored log2 agree.
-        assert_eq!(logarithm2(1024), 10);
-        assert_eq!(logarithm2(16384), 14);
-        assert_eq!(logarithm2(65536), 16);
-        // Non-powers of two: must round to nearest, not floor. These are the
-        // cases where usize::ilog2 would silently pick the wrong mask bucket
-        // (regression guard for the 4.0.0 -> 4.0.1 fix).
-        assert_eq!(logarithm2(1500), 11); // log2 ~ 10.55, rounds up
-        assert_eq!(logarithm2(12288), 14); // log2 ~ 13.585, rounds up
-        assert_eq!(logarithm2(24576), 15); // log2 ~ 14.585, rounds up
-        assert_eq!(logarithm2(1100), 10); // log2 ~ 10.103, rounds down
-    }
-
-    #[test]
     #[should_panic]
     fn test_minimum_too_low() {
         let array = [0u8; 1024];
@@ -1018,6 +1192,21 @@ mod tests {
         assert_eq!(remaining, 0);
     }
 
+    #[test]
+    fn test_logarithm2() {
+        // Powers of two: rounded and floored log2 agree.
+        assert_eq!(logarithm2(1024), 10);
+        assert_eq!(logarithm2(16384), 14);
+        assert_eq!(logarithm2(65536), 16);
+        // Non-powers of two: must round to nearest, not floor. These are the
+        // cases where usize::ilog2 would silently pick the wrong mask bucket
+        // (regression guard for the 4.0.0 -> 4.0.1 fix).
+        assert_eq!(logarithm2(1500), 11); // log2 ~ 10.55, rounds up
+        assert_eq!(logarithm2(12288), 14); // log2 ~ 13.585, rounds up
+        assert_eq!(logarithm2(24576), 15); // log2 ~ 14.585, rounds up
+        assert_eq!(logarithm2(1100), 10); // log2 ~ 10.103, rounds down
+    }
+
     struct ExpectedChunk {
         hash: u64,
         offset: u64,
@@ -1135,6 +1324,53 @@ mod tests {
     fn test_error_fmt() {
         let err = Error::Empty;
         assert_eq!(format!("{err}"), "no more data");
+    }
+
+    #[test]
+    fn test_chunker_matches_iterator() {
+        // The additive Chunker API must produce byte-for-byte identical chunks
+        // (offset, length, hash, and the bytes themselves) to the FastCDC
+        // iterator for the same parameters. Guards the new path against drift.
+        let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+        let zeros = vec![0u8; 50_000];
+        let configs = [
+            (4096usize, 16384usize, 65535usize),
+            (8192, 32768, 131072),
+            (16384, 65536, 262144),
+        ];
+        for source in [contents.as_slice(), zeros.as_slice()] {
+            for (min, avg, max) in configs {
+                let expected: Vec<Chunk> = FastCDC::new(source, min, avg, max).collect();
+                let mut got: Vec<Chunk> = Vec::new();
+                let chunker = Chunker::new(min, avg, max);
+                chunker.for_each_chunk(source, |offset, length, hash, bytes| {
+                    assert_eq!(bytes, &source[offset..offset + length]);
+                    got.push(Chunk { hash, offset, length });
+                });
+                assert_eq!(got, expected, "mismatch for ({min},{avg},{max})");
+                // for_each_boundary must agree with for_each_chunk
+                let mut bounds: Vec<(usize, usize, u64)> = Vec::new();
+                chunker.for_each_boundary(source, |o, l, h| bounds.push((o, l, h)));
+                let from_chunks: Vec<(usize, usize, u64)> =
+                    got.iter().map(|c| (c.offset, c.length, c.hash)).collect();
+                assert_eq!(bounds, from_chunks);
+            }
+        }
+    }
+
+    #[test]
+    fn test_chunker_seed_matches_iterator() {
+        let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
+        let expected: Vec<Chunk> =
+            FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666)
+                .collect();
+        let chunker =
+            Chunker::with_level_and_seed(4096, 16384, 65535, Normalization::Level1, 666);
+        let mut got: Vec<Chunk> = Vec::new();
+        chunker.for_each_chunk(&contents, |offset, length, hash, _| {
+            got.push(Chunk { hash, offset, length });
+        });
+        assert_eq!(got, expected);
     }
 
     #[test]
