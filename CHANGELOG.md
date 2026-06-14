@@ -17,10 +17,13 @@ This file follows the convention described at
   measured ~7–14% throughput on random/text/zeros across chunk sizes (M1 Pro and
   a dedicated-CPU x86 VM). The `&[u64]`/`Cow` public signature is unchanged.
 ### Added
-- **`v2020::Chunker`** — a reusable, source-independent chunker config with
-  `for_each_chunk` (zero-allocation; hands the callback the borrowed chunk slice,
-  e.g. for per-segment hashing) and `for_each_boundary` (offset/len/hash only).
-  Additive; produces identical cut points to `v2020::FastCDC`.
+- **`v2020::FastCDC::rechunk`** — re-points an existing `FastCDC` at a new source
+  and resets iteration, reusing the already-computed normalization masks and gear
+  tables. The cheap way to chunk many in-memory buffers with identical parameters:
+  avoids recomputing masks and (for a non-zero seed) re-allocating the gear tables
+  on every `FastCDC::new`. The iterator already yields each chunk's offset/length
+  without copying, so callers needing the chunk bytes can slice the source. Cut
+  points are identical to a freshly constructed `FastCDC`.
 
 ## [4.0.1] - 2026-04-26
 ### Fixed
