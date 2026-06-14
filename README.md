@@ -14,6 +14,13 @@ $ cargo build
 $ cargo test
 ```
 
+### Testing async support
+
+```shell
+cargo test --features tokio
+cargo test --features futures
+```
+
 ## Example Usage
 
 Examples can be found in the `examples` directory of the source repository, which demonstrate finding chunk boundaries in a given file. There are both streaming and non-streaming examples, where the non-streaming examples use the `memmap2` crate to read large files efficiently.
