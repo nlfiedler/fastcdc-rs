@@ -604,6 +604,32 @@ impl<'a> FastCDC<'a> {
         );
         (hash, start + count)
     }
+
+    ///
+    /// Re-point this chunker at a new source and reset iteration to the start,
+    /// reusing the already-computed normalization masks and gear tables.
+    ///
+    /// This is the cheap way to chunk many in-memory buffers with identical
+    /// parameters: unlike calling [`FastCDC::new`] for each buffer, it does not
+    /// recompute the masks nor (for a non-zero seed) re-allocate the gear
+    /// tables. Returns `&mut self` so the result can be iterated directly.
+    ///
+    /// ```
+    /// use fastcdc::v2020::FastCDC;
+    /// let data = vec![0u8; 200_000];
+    /// let mut chunker = FastCDC::new(&data, 4096, 16384, 65535);
+    /// // reuse the same configuration for a different buffer or region
+    /// // without rebuilding the chunker:
+    /// let total: usize = chunker.rechunk(&data[..100_000]).map(|c| c.length).sum();
+    /// assert_eq!(total, 100_000);
+    /// ```
+    ///
+    pub fn rechunk(&mut self, source: &'a [u8]) -> &mut Self {
+        self.source = source;
+        self.processed = 0;
+        self.remaining = source.len();
+        self
+    }
 }
 
 impl Iterator for FastCDC<'_> {
@@ -633,154 +659,6 @@ impl Iterator for FastCDC<'_> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let upper_bound = self.remaining / self.min_size;
         (1.min(upper_bound), Some(upper_bound))
-    }
-}
-
-///
-/// A reusable, source-independent chunker configuration.
-///
-/// [`FastCDC`] borrows the source for its whole lifetime, which is awkward when
-/// you want to chunk many in-memory buffers with the same parameters: you pay
-/// the (small) mask/gear setup on every `FastCDC::new`. `Chunker` precomputes
-/// that setup once and applies it to any number of slices via a zero-allocation
-/// callback. The cut points are identical to [`FastCDC`] with the same
-/// parameters — `Chunker` is just a different way to drive the same `cut_gear`.
-///
-/// The callback forms are useful when:
-///   * you already have the bytes in memory (no need for the [`StreamCDC`]
-///     buffer + per-chunk `Vec` allocation), and
-///   * you want to hash each segment yourself (e.g. SHA-256 per chunk) without
-///     the chunker allocating or copying — [`for_each_chunk`](Chunker::for_each_chunk)
-///     hands you the exact `&[u8]` slice for each chunk.
-///
-/// ```
-/// use fastcdc::v2020::Chunker;
-/// # let data = vec![0u8; 200_000];
-/// let chunker = Chunker::new(4096, 16384, 65535);
-/// let mut total = 0usize;
-/// chunker.for_each_chunk(&data, |offset, length, _hash, bytes| {
-///     debug_assert_eq!(bytes.len(), length);
-///     debug_assert_eq!(&data[offset..offset + length], bytes);
-///     // e.g. let digest = sha2::Sha256::digest(bytes);
-///     total += length;
-/// });
-/// assert_eq!(total, data.len());
-/// ```
-///
-#[derive(Debug, Clone)]
-pub struct Chunker {
-    min_size: usize,
-    avg_size: usize,
-    max_size: usize,
-    mask_s: u64,
-    mask_l: u64,
-    mask_s_ls: u64,
-    mask_l_ls: u64,
-    gear: Cow<'static, [u64]>,
-    gear_ls: Cow<'static, [u64]>,
-}
-
-impl Chunker {
-    /// Construct a `Chunker` using normalization level 1 (the default).
-    pub fn new(min_size: usize, avg_size: usize, max_size: usize) -> Self {
-        Self::with_level(min_size, avg_size, max_size, Normalization::Level1)
-    }
-
-    /// Construct a `Chunker` with the given normalization level.
-    pub fn with_level(
-        min_size: usize,
-        avg_size: usize,
-        max_size: usize,
-        level: Normalization,
-    ) -> Self {
-        Self::with_level_and_seed(min_size, avg_size, max_size, level, 0)
-    }
-
-    /// Construct a `Chunker` with the given normalization level and GEAR seed.
-    pub fn with_level_and_seed(
-        min_size: usize,
-        avg_size: usize,
-        max_size: usize,
-        level: Normalization,
-        seed: u64,
-    ) -> Self {
-        debug_assert!(min_size >= MINIMUM_MIN);
-        debug_assert!(min_size <= MINIMUM_MAX);
-        debug_assert!(avg_size >= AVERAGE_MIN);
-        debug_assert!(avg_size <= AVERAGE_MAX);
-        debug_assert!(max_size >= MAXIMUM_MIN);
-        debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
-        let normalization = level.bits();
-        let mask_s = MASKS[(bits + normalization) as usize];
-        let mask_l = MASKS[(bits - normalization) as usize];
-        let (gear, gear_ls) = get_gear_with_seed(seed);
-        Self {
-            min_size,
-            avg_size,
-            max_size,
-            mask_s,
-            mask_l,
-            mask_s_ls: mask_s << 1,
-            mask_l_ls: mask_l << 1,
-            gear,
-            gear_ls,
-        }
-    }
-
-    /// Invoke `f(offset, length, hash, &source[offset..offset + length])` for
-    /// each chunk in `source`, in order. Allocation-free: the slice handed to
-    /// the callback borrows directly from `source`.
-    ///
-    /// Equivalent cut points to iterating [`FastCDC`] over the same source with
-    /// the same parameters.
-    pub fn for_each_chunk(&self, source: &[u8], mut f: impl FnMut(usize, usize, u64, &[u8])) {
-        self.for_each_boundary(source, |offset, length, hash| {
-            f(offset, length, hash, &source[offset..offset + length]);
-        });
-    }
-
-    /// Invoke `f(offset, length, hash)` for each chunk boundary in `source`,
-    /// without materializing the chunk slice. Use this when you only need the
-    /// offsets/lengths (e.g. to build an extent map).
-    pub fn for_each_boundary(&self, source: &[u8], mut f: impl FnMut(usize, usize, u64)) {
-        // Convert the GEAR tables to fixed-size arrays once, here, instead of
-        // re-running `try_into` inside the public `cut_gear` on every chunk.
-        let gear: &[u64; 256] = (&*self.gear)
-            .try_into()
-            .expect("GEAR table must have 256 entries");
-        let gear_ls: &[u64; 256] = (&*self.gear_ls)
-            .try_into()
-            .expect("GEAR_LS table must have 256 entries");
-        let mut processed = 0usize;
-        let mut remaining = source.len();
-        while remaining > 0 {
-            let (hash, count) = cut_gear_arr(
-                &source[processed..processed + remaining],
-                self.min_size,
-                self.avg_size,
-                self.max_size,
-                self.mask_s,
-                self.mask_l,
-                self.mask_s_ls,
-                self.mask_l_ls,
-                gear,
-                gear_ls,
-            );
-            // `cut_gear` always makes progress on a non-empty slice for a valid
-            // `min_size` (>= MINIMUM_MIN). A zero count is only reachable with an
-            // invalid `min_size`, which the constructor already debug-asserts;
-            // if it ever happens, emit the remainder as one final chunk rather
-            // than silently dropping the rest of the source.
-            if count == 0 {
-                debug_assert!(false, "cut_gear made no progress on a non-empty source");
-                f(processed, remaining, hash);
-                break;
-            }
-            f(processed, count, hash);
-            processed += count;
-            remaining -= count;
-        }
     }
 }
 
@@ -1340,57 +1218,42 @@ mod tests {
     }
 
     #[test]
-    fn test_chunker_matches_iterator() {
-        // The additive Chunker API must produce byte-for-byte identical chunks
-        // (offset, length, hash, and the bytes themselves) to the FastCDC
-        // iterator for the same parameters. Guards the new path against drift.
+    fn test_rechunk_matches_new() {
+        // `rechunk` reuses the precomputed masks/gear; for each buffer it must
+        // produce byte-for-byte identical chunks to a freshly constructed
+        // FastCDC with the same parameters. Guards reuse against drift.
         let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
         let zeros = vec![0u8; 50_000];
-        let configs = [
-            (4096usize, 16384usize, 65535usize),
-            (8192, 32768, 131072),
-            (16384, 65536, 262144),
-        ];
-        for source in [contents.as_slice(), zeros.as_slice()] {
-            for (min, avg, max) in configs {
-                let expected: Vec<Chunk> = FastCDC::new(source, min, avg, max).collect();
-                let mut got: Vec<Chunk> = Vec::new();
-                let chunker = Chunker::new(min, avg, max);
-                chunker.for_each_chunk(source, |offset, length, hash, bytes| {
-                    assert_eq!(bytes, &source[offset..offset + length]);
-                    got.push(Chunk { hash, offset, length });
-                });
-                assert_eq!(got, expected, "mismatch for ({min},{avg},{max})");
-                // for_each_boundary must agree with for_each_chunk
-                let mut bounds: Vec<(usize, usize, u64)> = Vec::new();
-                chunker.for_each_boundary(source, |o, l, h| bounds.push((o, l, h)));
-                let from_chunks: Vec<(usize, usize, u64)> =
-                    got.iter().map(|c| (c.offset, c.length, c.hash)).collect();
-                assert_eq!(bounds, from_chunks);
-            }
+        let sources = [contents.as_slice(), zeros.as_slice()];
+        let mut chunker = FastCDC::new(sources[0], 4096, 16384, 65535);
+        for source in sources {
+            let expected: Vec<Chunk> = FastCDC::new(source, 4096, 16384, 65535).collect();
+            let got: Vec<Chunk> = chunker.rechunk(source).collect();
+            assert_eq!(got, expected);
         }
     }
 
     #[test]
-    fn test_chunker_seed_matches_iterator() {
+    fn test_rechunk_seed_matches_new() {
+        // A seeded chunker reused via `rechunk` must match a freshly seeded one,
+        // confirming the (allocated) seeded gear tables are carried over.
         let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
-        let expected: Vec<Chunk> =
-            FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666)
-                .collect();
-        let chunker =
-            Chunker::with_level_and_seed(4096, 16384, 65535, Normalization::Level1, 666);
-        let mut got: Vec<Chunk> = Vec::new();
-        chunker.for_each_chunk(&contents, |offset, length, hash, _| {
-            got.push(Chunk { hash, offset, length });
-        });
-        assert_eq!(got, expected);
+        let zeros = vec![0u8; 50_000];
+        let mut chunker =
+            FastCDC::with_level_and_seed(&contents, 4096, 16384, 65535, Normalization::Level1, 666);
+        for source in [contents.as_slice(), zeros.as_slice()] {
+            let expected: Vec<Chunk> =
+                FastCDC::with_level_and_seed(source, 4096, 16384, 65535, Normalization::Level1, 666)
+                    .collect();
+            let got: Vec<Chunk> = chunker.rechunk(source).collect();
+            assert_eq!(got, expected);
+        }
     }
 
     #[test]
-    fn test_chunker_covers_every_byte() {
-        // Guards against silently dropping the tail: the emitted chunks must be
-        // contiguous and cover the whole source exactly, for a range of sizes
-        // including sub-min and all-zeros inputs.
+    fn test_fastcdc_covers_every_byte() {
+        // The iterator must emit contiguous chunks that cover the whole source
+        // exactly, across sub-min, all-zeros, and fixture inputs.
         let fixture = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
         let cases: [&[u8]; 5] = [
             &[],
@@ -1399,19 +1262,14 @@ mod tests {
             &fixture,
             &fixture[..4096],    // exactly min_size
         ];
-        let chunker = Chunker::new(4096, 16384, 65535);
         for src in cases {
             let mut next = 0usize;
-            let mut total = 0usize;
-            chunker.for_each_chunk(src, |offset, length, _hash, bytes| {
-                assert_eq!(offset, next, "chunks must be contiguous");
-                assert_eq!(bytes.len(), length);
-                assert_eq!(bytes, &src[offset..offset + length]);
-                next += length;
-                total += length;
-            });
-            assert_eq!(total, src.len(), "every byte must be emitted exactly once");
-            assert_eq!(next, src.len());
+            for chunk in FastCDC::new(src, 4096, 16384, 65535) {
+                assert_eq!(chunk.offset, next, "chunks must be contiguous");
+                assert!(chunk.length > 0, "chunks must be non-empty");
+                next += chunk.length;
+            }
+            assert_eq!(next, src.len(), "every byte must be emitted exactly once");
         }
     }
 
