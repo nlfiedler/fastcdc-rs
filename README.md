@@ -95,6 +95,26 @@ let chunker = fastcdc::ronomon::FastCDC::new(&contents, 8192, 16384, 32768);
 
 The cut points produced will be identical to previous releases as the `ronomon` implementation was never changed in that manner. Note, however, that the other implementations _will_ produce different results.
 
+## Benchmarking
+
+A [criterion](https://docs.rs/criterion) benchmark suite lives in `benches/chunking.rs`. It chunks deterministically-generated inputs (random, text, zeros, mixed) across the chunker variants, code paths, and average chunk sizes. All data is produced from fixed seeds, so there are no fixtures to manage.
+
+```shell
+cargo bench
+cargo bench -- v2020   # filter by group/benchmark name
+```
+
+These benchmarks are intended for **local, before-and-after comparison** of a change, not for continuous integration — shared CI runners are too noisy for reliable microbenchmark measurements. The recommended workflow uses criterion's built-in baselines: capture the base branch, then compare the change against it.
+
+```shell
+git checkout master
+cargo bench -- --save-baseline before
+git checkout <pr-branch>
+cargo bench -- --baseline before
+```
+
+The second run prints the percent change and a significance verdict for each benchmark. For trustworthy numbers, run on an otherwise idle machine and treat deltas smaller than roughly 10% as noise.
+
 ## Reference Material
 
 The original algorithm from 2016 is described in [FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), while the improved "rolling two bytes each time" version from 2020 is detailed in [The Design of Fast Content-Defined Chunking for Data Deduplication Based Storage Systems](https://ieeexplore.ieee.org/document/9055082).
