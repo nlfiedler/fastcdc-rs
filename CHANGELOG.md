@@ -56,7 +56,7 @@ Many changes suggested by Claude Code that seem worth making despite breaking th
 
 ## [3.2.1] - 2025-04-17
 ### Fixed
-- bits0rcerer: make `get_gear_with_seed()` public so it is usuable outside of
+- bits0rcerer: make `get_gear_with_seed()` public so it is usable outside of
   the `v2020` module.
 - bits0rcerer: pass GEAR tables by reference to avoid copying.
 - Restore the original `cut()` function and add `cut_gear()` with the references
