@@ -44,8 +44,10 @@ This file follows the convention described at
   selects the same bucket as `16384`), but `AsyncStreamCDC` and the example
   used `usize::ilog2`, which floors instead (selecting the `8192` bucket).
   Both now go through a new shared `v2020::select_masks` function, so all
-  three front-ends pick identical masks for identical arguments. Only affects
-  non-power-of-two `avg_size` values. (#51)
+  three front-ends pick identical masks for identical arguments.
+  **Boundary change:** Only affects `AsyncStreamCDC` output and the
+  `v2020_cut` example's output, and only for non-power-of-two `avg_size`
+  values; `FastCDC` and `StreamCDC` cut points are unchanged. (#51)
 ### Performance
 - **`v2020::cut_gear` inner loop: restored array-typed GEAR lookups.** The 4.0.0
   change from `&[u64; 256]` to `&[u64]` reintroduced a `panic_bounds_check` on
