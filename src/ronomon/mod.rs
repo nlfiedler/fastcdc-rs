@@ -199,8 +199,9 @@ impl Iterator for FastCDC<'_> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let upper_bound = self.bytes_remaining / self.min_size;
-        (1.min(upper_bound), Some(upper_bound))
+        let upper_bound = self.bytes_remaining.div_ceil(self.min_size);
+        let lower_bound = usize::from(self.bytes_remaining > 0);
+        (lower_bound, Some(upper_bound))
     }
 }
 
@@ -388,6 +389,20 @@ mod tests {
             assert_eq!(entry.offset % 1024, 0);
             assert_eq!(entry.length, 1024);
         }
+    }
+
+    #[test]
+    fn test_size_hint_short_tail() {
+        // A source shorter than min_size still yields exactly one chunk, so
+        // the upper bound must not be 0 while data remains (regression test
+        // for issue #50: size_hint violated the Iterator::size_hint contract).
+        let array = [0u8; 50];
+        let mut chunker = FastCDC::new(&array, 64, 256, 1024);
+        assert_eq!(chunker.size_hint(), (1, Some(1)));
+        let chunk = chunker.next().expect("one chunk expected");
+        assert_eq!(chunk.length, 50);
+        assert_eq!(chunker.size_hint(), (0, Some(0)));
+        assert_eq!(chunker.next(), None);
     }
 
     #[test]

@@ -6,6 +6,14 @@ This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Fixed
+- **`Iterator::size_hint` upper bound could violate the trait contract.** In
+  `ronomon`, `v2016`, and `v2020`, a non-empty tail shorter than `min_size`
+  still yields one final chunk, but `size_hint` computed its upper bound as
+  `remaining / min_size`, which floors to `0` in that case — understating the
+  actual number of items left. Now uses `remaining.div_ceil(min_size)` for the
+  upper bound and reports a lower bound of `1` while data remains. Chunk
+  boundaries are unchanged. (#50)
 ### Performance
 - **`v2020::cut_gear` inner loop: restored array-typed GEAR lookups.** The 4.0.0
   change from `&[u64; 256]` to `&[u64]` reintroduced a `panic_bounds_check` on
