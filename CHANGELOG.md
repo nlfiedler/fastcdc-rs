@@ -5,7 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [5.0.0] - 2026-08-22
 ### Breaking Changes
 - **`v2020` now requires even `min_size`, `avg_size`, and `max_size`.** The
   "rolling two bytes each time" scan tests candidates in byte pairs starting
