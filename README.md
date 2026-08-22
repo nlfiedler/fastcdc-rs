@@ -54,7 +54,7 @@ Both the `v2016` and `v2020` modules have a streaming version of FastCDC named `
 
 ```rust
 let source = std::fs::File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-let chunker = fastcdc::v2020::StreamCDC::new(source, 4096, 16384, 65535);
+let chunker = fastcdc::v2020::StreamCDC::new(source, 4096, 16384, 65534);
 for result in chunker {
     let chunk = result.unwrap();
     println!("offset={} length={}", chunk.offset, chunk.length);
@@ -67,7 +67,7 @@ The `v2020` module has an async streaming version of FastCDC named `AsyncStreamC
 
 ```rust
 let source = std::fs::File::open("test/fixtures/SekienAkashita.jpg").unwrap();
-let chunker = fastcdc::v2020::AsyncStreamCDC::new(&source, 4096, 16384, 65535);
+let chunker = fastcdc::v2020::AsyncStreamCDC::new(&source, 4096, 16384, 65534);
 let stream = chunker.as_stream();
 let chunks = stream.collect::<Vec<_>>().await;
 

@@ -6,7 +6,31 @@ This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Breaking Changes
+- **`v2020` now requires even `min_size`, `avg_size`, and `max_size`.** The
+  "rolling two bytes each time" scan tests candidates in byte pairs starting
+  at `min_size / 2`, `avg_size / 2`, and `max_size / 2`; an odd value
+  truncates when halved and silently shifts those boundaries by one byte
+  (issue #52). For example `min_size = 65` let the scan return a chunk as
+  short as 64 bytes, violating the documented minimum. `FastCDC`,
+  `StreamCDC`, and `AsyncStreamCDC` now `debug_assert` that all three sizes
+  are even, as does the underlying `cut`/`cut_gear` scan itself. Callers
+  using an odd size such as the `max_size = 65535` from prior examples must
+  switch to an even value (e.g. `65534`); the built-in examples and doctests
+  have been updated accordingly. Release builds are unaffected by the
+  assertion (consistent with the existing `MINIMUM_MIN`/`AVERAGE_MIN`/etc.
+  range checks), but odd sizes remain unsupported either way. (#52)
 ### Fixed
+- **`v2020` forced/tail chunks could report a stale hash.** The leftover at
+  the very end of a source is not required to be even (unlike `min_size`/
+  `avg_size`/`max_size`, a file's length isn't under the caller's control),
+  and the scan never folded that trailing odd byte into the hash before
+  forcing a cut, so the returned fingerprint silently omitted the chunk's
+  last byte. The trailing byte is now folded into the hash (matching what a
+  byte-at-a-time scan would accumulate) without being tested as its own
+  boundary candidate. Cut points for even-sized parameters are unchanged;
+  only the hash of a chunk ending in a natural odd-length leftover changes.
+  (#52)
 - **`Iterator::size_hint` upper bound could violate the trait contract.** In
   `ronomon`, `v2016`, and `v2020`, a non-empty tail shorter than `min_size`
   still yields one final chunk, but `size_hint` computed its upper bound as

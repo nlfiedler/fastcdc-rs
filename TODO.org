@@ -1,9 +1,9 @@
 * Action Items
-** TODO commit doc changes
-** TODO file bug ~two-byte scan changes scalar cut-point rules~
-** TODO fix #51: make the masks match the papers
-** TODO fix #50: incorrect size_hint value
-** TODO fix two-byte scan bug
+** DONE commit doc changes
+** DONE file bug ~two-byte scan changes scalar cut-point rules~ (#52)
+** DONE fix #51: make the masks match the papers
+** DONE fix #50: incorrect size_hint value
+** DONE fix two-byte scan bug (#52)
 * Experimental Evaluation
 ** All times below are on an Apple M1 with 16 GB RAM
 ** Time for examples to chunk =last_day.mov= with 1mb chunks (552 MB)

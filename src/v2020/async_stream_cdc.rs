@@ -44,7 +44,7 @@ use async_stream::try_stream;
 ///
 /// async fn run() {
 ///     let source = std::fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
-///     let mut chunker = AsyncStreamCDC::new(source.as_ref(), 4096, 16384, 65535);
+///     let mut chunker = AsyncStreamCDC::new(source.as_ref(), 4096, 16384, 65534);
 ///     let stream = chunker.as_stream();
 ///
 ///     let chunks = stream.collect::<Vec<_>>().await;
@@ -121,6 +121,9 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
+        debug_assert!(min_size.is_multiple_of(2), "min_size must be even");
+        debug_assert!(avg_size.is_multiple_of(2), "avg_size must be even");
+        debug_assert!(max_size.is_multiple_of(2), "max_size must be even");
         let (mask_s, mask_l) = select_masks(avg_size, level);
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
@@ -365,7 +368,7 @@ mod tests {
                 digest: "f6996300fce24d3da56c81ea52e5f4f461ce6adb4496f65252996e1082471aac".into(),
             },
         ];
-        let mut chunker = AsyncStreamCDC::new(contents.as_ref(), 4096, 16384, 65535);
+        let mut chunker = AsyncStreamCDC::new(contents.as_ref(), 4096, 16384, 65534);
         let stream = chunker.as_stream();
 
         let chunks = stream.collect::<Vec<_>>().await;

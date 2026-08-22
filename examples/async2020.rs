@@ -24,7 +24,9 @@ async fn main() {
         )
         .get_matches();
     let size = matches.get_one::<usize>("size").unwrap_or(&131072);
-    let avg_size = *size;
+    // v2020 requires even min/avg/max sizes; round down to a multiple of 8 so
+    // avg_size, avg_size / 4, and avg_size * 4 all come out even.
+    let avg_size = *size & !7;
     let filename = matches.get_one::<String>("INPUT").unwrap();
     let file = File::open(filename).await.expect("cannot open file!");
     let min_size = avg_size / 4;

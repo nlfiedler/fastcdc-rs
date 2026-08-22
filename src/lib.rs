@@ -56,8 +56,11 @@
 //! the [`v2020`] module. This implementation produces identical cut points as
 //! the 2016 version, but does so a bit faster. Note that there are subtle
 //! differences between this implementation and the C implementation as well as
-//! the 2020 paper (GEAR table values, some mask values, default normalization
-//! value, and odd-tail behavior with respect to cut points).
+//! the 2020 paper (GEAR table values, some mask values, and the default
+//! normalization value), since these are either not defined by the paper or
+//! were derived from experimentation on a data set no one else has access to.
+//! See [issue #49](https://github.com/nlfiedler/fastcdc-rs/issues/49) for
+//! details.
 //!
 //! If you are using this crate for the first time, the [`v2020`] implementation
 //! would be the most appropriate. It uses 64-bit hash values and tends to be
@@ -71,7 +74,7 @@
 //! use std::fs;
 //! use fastcdc::v2020;
 //! let contents = fs::read("test/fixtures/SekienAkashita.jpg").unwrap();
-//! let chunker = v2020::FastCDC::new(&contents, 4096, 16384, 65535);
+//! let chunker = v2020::FastCDC::new(&contents, 4096, 16384, 65534);
 //! for entry in chunker {
 //!     println!("offset={} size={}", entry.offset, entry.length);
 //! }
