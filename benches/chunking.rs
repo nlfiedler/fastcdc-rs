@@ -1,5 +1,5 @@
 //! Reproducible chunking benchmarks for FastCDC.
-//! 
+//!
 //! Code and strategy borrowed from perf-bench-harness-and-notes branch in
 //! https://github.com/russellromney/fastcdc-rs fork
 //!
@@ -68,9 +68,9 @@ fn gen_random(len: usize, seed: u64) -> Vec<u8> {
 /// like source code or logs — frequent cut points, lots of short scans.
 fn gen_text(len: usize, seed: u64) -> Vec<u8> {
     const WORDS: &[&str] = &[
-        "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog", "lorem",
-        "ipsum", "dolor", "sit", "amet", "fn", "let", "mut", "return", "struct",
-        "impl", "self", "match", "async", "await", "value", "offset", "length",
+        "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog", "lorem", "ipsum", "dolor",
+        "sit", "amet", "fn", "let", "mut", "return", "struct", "impl", "self", "match", "async",
+        "await", "value", "offset", "length",
     ];
     let mut rng = SplitMix64(seed);
     let mut out = Vec::with_capacity(len + 16);
