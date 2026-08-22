@@ -34,11 +34,8 @@ fn main() {
     // lot of work compared to the v2020 example, but the point is to make sure
     // the cut() function remains usable despite other API changes. The output
     // of this example should be identical to the v2020 example.
-    let bits = avg_size.ilog2();
     let level = Normalization::Level1;
-    let normalization = level.bits();
-    let mask_s = MASKS[(bits + normalization) as usize];
-    let mask_l = MASKS[(bits - normalization) as usize];
+    let (mask_s, mask_l) = select_masks(avg_size as usize, level);
     let mask_s_ls = mask_s << 1;
     let mask_l_ls = mask_l << 1;
     let mut processed: usize = 0;

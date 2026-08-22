@@ -416,6 +416,23 @@ fn logarithm2(value: usize) -> u32 {
 }
 
 ///
+/// Select the strict (`mask_s`) and relaxed (`mask_l`) masks from [`MASKS`]
+/// for the given average chunk size and normalization level.
+///
+/// [`FastCDC`], [`StreamCDC`], and `AsyncStreamCDC` all call this so that
+/// they pick identical masks for identical arguments; callers implementing
+/// their own scan loop against [`cut`]/[`cut_gear`] (see the `v2020_cut`
+/// example) should call it too rather than reimplementing the bucket lookup.
+///
+pub fn select_masks(avg_size: usize, level: Normalization) -> (u64, u64) {
+    let bits = logarithm2(avg_size);
+    let normalization = level.bits();
+    let mask_s = MASKS[(bits + normalization) as usize];
+    let mask_l = MASKS[(bits - normalization) as usize];
+    (mask_s, mask_l)
+}
+
+///
 /// The level for the normalized chunking used by FastCDC.
 ///
 /// Normalized chunking "generates chunks whose sizes are normalized to a
@@ -554,10 +571,7 @@ impl<'a> FastCDC<'a> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
-        let normalization = level.bits();
-        let mask_s = MASKS[(bits + normalization) as usize];
-        let mask_l = MASKS[(bits - normalization) as usize];
+        let (mask_s, mask_l) = select_masks(avg_size, level);
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             source,
@@ -803,10 +817,7 @@ impl<R: Read> StreamCDC<R> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = logarithm2(avg_size);
-        let normalization = level.bits();
-        let mask_s = MASKS[(bits + normalization) as usize];
-        let mask_l = MASKS[(bits - normalization) as usize];
+        let (mask_s, mask_l) = select_masks(avg_size, level);
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             buffer: vec![0_u8; max_size],
@@ -974,6 +985,13 @@ mod tests {
         let chunker = FastCDC::new(&source, 1_048_576, 4_194_304, 16_777_216);
         assert_eq!(chunker.mask_l, MASKS[21]);
         assert_eq!(chunker.mask_s, MASKS[23]);
+        // Non-power-of-two avg_size: log2(12288) ~ 13.585 rounds up to 14, not
+        // down to 13. Regression guard for issue #51, where AsyncStreamCDC and
+        // the v2020_cut example used usize::ilog2 (floor) here and picked
+        // different masks than FastCDC/StreamCDC for the same arguments.
+        let chunker = FastCDC::new(&source, 3072, 12288, 49152);
+        assert_eq!(chunker.mask_l, MASKS[13]);
+        assert_eq!(chunker.mask_s, MASKS[15]);
     }
 
     #[test]

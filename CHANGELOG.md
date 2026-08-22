@@ -14,6 +14,14 @@ This file follows the convention described at
   actual number of items left. Now uses `remaining.div_ceil(min_size)` for the
   upper bound and reports a lower bound of `1` while data remains. Chunk
   boundaries are unchanged. (#50)
+- **`v2020::AsyncStreamCDC` and the `v2020_cut` example could select different
+  masks than `FastCDC`/`StreamCDC` for the same `avg_size`.** The sync
+  constructors round `avg_size.log2()` to the nearest bit (so e.g. `12288`
+  selects the same bucket as `16384`), but `AsyncStreamCDC` and the example
+  used `usize::ilog2`, which floors instead (selecting the `8192` bucket).
+  Both now go through a new shared `v2020::select_masks` function, so all
+  three front-ends pick identical masks for identical arguments. Only affects
+  non-power-of-two `avg_size` values. (#51)
 ### Performance
 - **`v2020::cut_gear` inner loop: restored array-typed GEAR lookups.** The 4.0.0
   change from `&[u64; 256]` to `&[u64]` reintroduced a `panic_bounds_check` on

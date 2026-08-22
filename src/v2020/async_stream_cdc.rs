@@ -121,10 +121,7 @@ impl<R: AsyncRead + Unpin> AsyncStreamCDC<R> {
         debug_assert!(avg_size <= AVERAGE_MAX);
         debug_assert!(max_size >= MAXIMUM_MIN);
         debug_assert!(max_size <= MAXIMUM_MAX);
-        let bits = avg_size.ilog2();
-        let normalization = level.bits();
-        let mask_s = MASKS[(bits + normalization) as usize];
-        let mask_l = MASKS[(bits - normalization) as usize];
+        let (mask_s, mask_l) = select_masks(avg_size, level);
         let (gear, gear_ls) = get_gear_with_seed(seed);
         Self {
             buffer: vec![0_u8; max_size],
@@ -308,6 +305,11 @@ mod tests {
         let chunker = AsyncStreamCDC::new(source.as_slice(), 1_048_576, 4_194_304, 16_777_216);
         assert_eq!(chunker.mask_l, MASKS[21]);
         assert_eq!(chunker.mask_s, MASKS[23]);
+        // Must agree with FastCDC/StreamCDC for a non-power-of-two avg_size.
+        // Regression guard for issue #51.
+        let chunker = AsyncStreamCDC::new(source.as_slice(), 3072, 12288, 49152);
+        assert_eq!(chunker.mask_l, MASKS[13]);
+        assert_eq!(chunker.mask_s, MASKS[15]);
     }
 
     struct ExpectedChunk {
