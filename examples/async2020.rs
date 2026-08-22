@@ -1,6 +1,11 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
+//! Requires the `tokio` feature. Run with:
+//!
+//! ```shell
+//! cargo run --example async2020 --features tokio -- --size 16384 test/fixtures/SekienAkashita.jpg
+//! ```
 use clap::{Arg, arg, command, value_parser};
 use fastcdc::v2020::*;
 use tokio::fs::File;

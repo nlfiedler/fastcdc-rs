@@ -1,6 +1,11 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
+//! Run with:
+//!
+//! ```shell
+//! cargo run --example ronomon -- --size 16384 test/fixtures/SekienAkashita.jpg
+//! ```
 use clap::{Arg, arg, command, value_parser};
 use fastcdc::ronomon::*;
 use memmap2::Mmap;

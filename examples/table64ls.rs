@@ -1,6 +1,11 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
+//! Run with:
+//!
+//! ```shell
+//! cargo run --example table64ls
+//! ```
 use byteorder::{BigEndian, ReadBytesExt};
 use md5::{Digest, Md5};
 use std::io::Cursor;

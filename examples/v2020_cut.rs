@@ -1,6 +1,11 @@
 //
 // Copyright (c) 2025 Nathan Fiedler
 //
+//! Run with:
+//!
+//! ```shell
+//! cargo run --example v2020_cut -- --size 16384 test/fixtures/SekienAkashita.jpg
+//! ```
 use clap::{Arg, arg, command, value_parser};
 use fastcdc::v2020::*;
 use memmap2::Mmap;

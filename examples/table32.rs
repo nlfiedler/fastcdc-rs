@@ -1,6 +1,11 @@
 //
 // Copyright (c) 2023 Nathan Fiedler
 //
+//! Run with:
+//!
+//! ```shell
+//! cargo run --example table32
+//! ```
 use aes::cipher::{Array, KeyIvInit, StreamCipher};
 use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
