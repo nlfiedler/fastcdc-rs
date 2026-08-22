@@ -44,12 +44,20 @@ pub const MAXIMUM_MIN: usize = 1024;
 pub const MAXIMUM_MAX: usize = 16_777_216;
 
 ///
-/// Masks for each of the desired number of bits, where 0 through 5 are unused.
-/// The values for sizes 64 bytes through 128 kilo-bytes comes from the C
-/// reference implementation (found in the destor repository) while the extra
-/// values come from the restic-FastCDC repository. The FastCDC paper claims that
-/// the deduplication ratio is slightly improved when the mask bits are spread
-/// relatively evenly, hence these seemingly "magic" values.
+/// Cut-point test masks, one per target chunk-size bucket (indexed by
+/// `avg_size.log2().round()`, see the private `logarithm2` helper).
+///
+/// A candidate byte position is a valid cut point when `hash & mask == 0`;
+/// a mask's bit count sets the probability of that (~`2^-popcount(mask)`),
+/// which sets the expected distance to the next cut. Normalized chunking
+/// picks a stricter mask (`mask_s`, more bits) below `avg_size` and a
+/// looser one (`mask_l`, fewer bits) above it, biasing cut points toward
+/// the average. Values for 64 bytes through 128 KB come from the C
+/// reference implementation (destor repository); the rest come from
+/// restic-FastCDC. The FastCDC paper notes deduplication improves slightly
+/// when mask bits are spread evenly, hence these "magic" values.
+///
+/// Note that indices 0 through 5 are unused.
 ///
 pub const MASKS: [u64; 26] = [
     0,                  // padding

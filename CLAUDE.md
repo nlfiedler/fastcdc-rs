@@ -67,7 +67,7 @@ The GEAR hash tables in `v2016` and `v2020` are identical 256-entry `[u64; 256]`
 
 ### Normalization
 
-`v2016` and `v2020` expose a `Normalization` enum (Level0–Level3). Level1 is the default. Higher levels produce chunks closer to the target average size by using different mask bit widths (`mask_s` for the first half, `mask_l` for the second half). The mask values come from the `MASKS` constant array indexed by `avg_size.ilog2() ± normalization_bits`.
+`v2016` and `v2020` expose a `Normalization` enum (Level0–Level3). Level1 is the default. Higher levels produce chunks closer to the target average size by using different mask bit widths (`mask_s` for the first half, `mask_l` for the second half). The mask values come from the `MASKS` constant array indexed by `avg_size.log2().round() ± normalization_bits` (the private `logarithm2` helper) — a *rounded* log2, not `usize::ilog2()`'s floor, so a non-power-of-two `avg_size` like `12288` picks the same bucket as `16384` rather than `8192`.
 
 ### Seeding
 

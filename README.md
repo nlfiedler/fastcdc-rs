@@ -124,7 +124,7 @@ The original algorithm from 2016 is described in [FastCDC: a Fast and Efficient 
 * [wxiacode/FastCDC-c](https://github.com/wxiacode/FastCDC-c)
     + Canonical algorithm in C with gear table generation and mask values.
 * [HIT-HSSL/destor](https://github.com/HIT-HSSL/destor)
-    + An earlier implementation in C, maybe based on 2016 paper.
+    + An earlier implementation in C, maybe based on the 2016 paper.
 * [wxiacode/restic-FastCDC](https://github.com/wxiacode/restic-FastCDC)
     + Alternative implementation in Go with additional mask values.
 * [rdedup_cdc at docs.rs](https://docs.rs/crate/rdedup-cdc/0.1.0/source/src/fastcdc.rs)
@@ -132,4 +132,4 @@ The original algorithm from 2016 is described in [FastCDC: a Fast and Efficient 
 * [ronomon/deduplication](https://github.com/ronomon/deduplication)
     + C++ and JavaScript implementation of a variation of FastCDC.
 * [titusz/fastcdc-py](https://github.com/titusz/fastcdc-py)
-    + Pure Python port of FastCDC. Compatible with this implementation.
+    + Pure Python port of FastCDC.
