@@ -96,8 +96,8 @@ Many changes suggested by Claude Code that seem worth making despite breaking th
   What was `fastcdc::FastCDC::new()` is now `fastcdc::ronomon::FastCDC::new()`.
 - flokli: remove `mut` from `&self` in `cut()` as it does not need to be mutable.
 ### Added
-- Canonical implementation of FastCDC from 2016 paper in `v2016` module.
-- Canonical implementation of FastCDC from 2020 paper in `v2020` module.
+- Implementation of FastCDC from 2016 paper in `v2016` module.
+- Implementation of FastCDC from 2020 paper in `v2020` module.
 - `Normalization` enum to set the normalized chunking for `v2016` and `v2020` chunkers.
 - `StreamCDC`, streaming version of `FastCDC`, in `v2016` and `v2020` modules.
 

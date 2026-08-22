@@ -2,7 +2,7 @@
 // Copyright (c) 2023 Nathan Fiedler
 //
 
-//! This module implements the canonical FastCDC algorithm as described in the
+//! This module implements the FastCDC algorithm as described in the
 //! [paper](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf)
 //! by Wen Xia, et al., in 2016.
 //!

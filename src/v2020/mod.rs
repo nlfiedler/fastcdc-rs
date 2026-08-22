@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Nathan Fiedler
 //
 
-//! This module implements the canonical FastCDC algorithm as described in the
+//! This module implements the FastCDC algorithm as described in the
 //! [paper](https://ieeexplore.ieee.org/document/9055082) by Wen Xia, et al., in
 //! 2020.
 //!

@@ -49,12 +49,15 @@
 //! Rust version of this variation is found in the [`ronomon`] module in this
 //! crate.
 //!
-//! For a canonical implementation of the algorithm as described in the 2016
-//! paper, see the [`v2016`] module.
+//! For an implementation of the algorithm as described in the 2016 paper, see
+//! the [`v2016`] module.
 //!
-//! For a canonical implementation of the algorithm as described in the 2020
-//! paper, see the [`v2020`] module. This implementation produces identical cut
-//! points as the 2016 version, but does so a bit faster.
+//! For an implementation of the algorithm as described in the 2020 paper, see
+//! the [`v2020`] module. This implementation produces identical cut points as
+//! the 2016 version, but does so a bit faster. Note that there are subtle
+//! differences between this implementation and the C implementation as well as
+//! the 2020 paper (GEAR table values, some mask values, default normalization
+//! value, and odd-tail behavior with respect to cut points).
 //!
 //! If you are using this crate for the first time, the [`v2020`] implementation
 //! would be the most appropriate. It uses 64-bit hash values and tends to be
@@ -116,12 +119,13 @@
 //! ## Large Data
 //!
 //! If processing very large files, the streaming version of the chunkers in the
-//! [`v2016`] and [`v2020`] modules may be a suitable approach. They both allocate a
-//! byte vector equal to the maximum chunk size, draining and resizing the
-//! vector as chunks are found. However, using a crate such as `memmap2` can be
-//! significantly faster than the streaming chunkers. See the examples in the
-//! `examples` directory for how to use the streaming versions as-is, versus the
-//! non-streaming chunkers which read from a memory-mapped file.
+//! [`v2016`] and [`v2020`] modules may be a suitable approach. They both
+//! allocate a byte vector equal to the maximum chunk size, draining and
+//! resizing the vector as chunks are found. However, using a crate such as
+//! `memmap2` can be significantly faster than the streaming chunkers. See the
+//! examples in the `examples` directory for how to use the streaming versions
+//! as-is, versus the non-streaming chunkers which read from a memory-mapped
+//! file.
 
 pub mod ronomon;
 pub mod v2016;

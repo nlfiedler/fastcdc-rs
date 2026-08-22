@@ -48,9 +48,9 @@ This crate provides three independent implementations of the FastCDC content def
 
 - **`ronomon`** — A variation of FastCDC from the [ronomon/deduplication](https://github.com/ronomon/deduplication) JS/C++ implementation. Uses 31-bit integers and right shifts. This is the legacy implementation; pre-3.0 users should migrate to this module. Returns `u32` hashes.
 
-- **`v2016`** — Canonical implementation from the 2016 FastCDC paper. Uses 64-bit Gear hashes, sub-minimum chunk cut-point skipping, and normalized chunking. Non-streaming only (`FastCDC`) plus a streaming variant (`StreamCDC`).
+- **`v2016`** — Implementation from the 2016 FastCDC paper. Uses 64-bit Gear hashes, sub-minimum chunk cut-point skipping, and normalized chunking. Non-streaming only (`FastCDC`) plus a streaming variant (`StreamCDC`).
 
-- **`v2020`** — Canonical implementation from the 2020 paper. Same cut points as `v2016` but ~20% faster due to "rolling two bytes each time." Recommended for new users. Provides:
+- **`v2020`** — Implementation from the 2020 paper. Same cut points as `v2016` but ~20% faster due to "rolling two bytes each time." Recommended for new users. Provides:
   - `FastCDC` — in-memory chunker, implements `Iterator<Item = Chunk>`
   - `StreamCDC` — reads from `Read`, implements `Iterator<Item = Result<ChunkData, Error>>`
   - `AsyncStreamCDC` — reads from `AsyncRead`, enabled by `tokio` or `futures` feature flags; produces a `Stream` via `.as_stream()`
