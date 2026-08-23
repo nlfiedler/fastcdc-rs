@@ -336,23 +336,9 @@ pub fn cut_gear(
     )
 }
 
-///
 /// Inner cut routine over fixed-size GEAR arrays.
 ///
-/// Identical math and cut points to the original `cut_gear`. The change is
-/// bounds-check-only (no behavior change):
-///   - GEAR tables are `&[u64; 256]`, indexed by a `u8`-derived value, so the
-///     two table lookups per iteration carry no bounds check. This removes 4 of
-///     the 8 `panic_bounds_check` sites the original had (verified in asm).
-///
-/// The source is also narrowed once to `&source[..remaining]` with hoisted
-/// loop bounds. This does NOT eliminate the `src[a]`/`src[a + 1]` bounds checks
-/// — the compiler will not prove `2 * index + 1 < remaining` through the loop —
-/// so 4 source-index checks remain. That is fine: `llvm-mca` shows the loop is
-/// bound by the hash dependency chain (`shl` -> `add` -> `add`), so those
-/// checks land in spare execution slots and cost ~0 cycles. The narrowing is
-/// kept for clarity and because it is harmless. See PERF_NOTES.md.
-///
+/// Scans six bytes at a time without changing candidate order.
 #[allow(clippy::too_many_arguments)]
 #[inline]
 fn cut_gear_arr(
@@ -386,39 +372,25 @@ fn cut_gear_arr(
     } else if remaining < center {
         center = remaining;
     }
-    // Narrow once to the live window. Note: this does NOT remove the per-byte
-    // source bounds check (the compiler won't prove `2*index+1 < remaining`
-    // here); 4 such checks remain. They are free in practice — the loop is
-    // latency-bound on the hash chain, not throughput-bound. The real win is
-    // the `&[u64; 256]` GEAR tables above, which drop the table-lookup checks.
     let src = &source[..remaining];
-    let limit1 = center / 2;
-    let limit2 = remaining / 2;
-    let mut index = min_size / 2;
     let mut hash: u64 = 0;
-    while index < limit1 {
-        let a = index * 2;
-        hash = (hash << 2).wrapping_add(gear_ls[src[a] as usize]);
-        if (hash & mask_s_ls) == 0 {
-            return (hash, a);
+    let center = center & !1;
+    let end = remaining & !1;
+    let mut scan_start = min_size & !1;
+    if scan_start < center {
+        if let Some(offset) = scan_region(
+            src, scan_start, center, &mut hash, mask_s_ls, mask_s, gear, gear_ls,
+        ) {
+            return (hash, offset);
         }
-        hash = hash.wrapping_add(gear[src[a + 1] as usize]);
-        if (hash & mask_s) == 0 {
-            return (hash, a + 1);
-        }
-        index += 1;
+        scan_start = center;
     }
-    while index < limit2 {
-        let a = index * 2;
-        hash = (hash << 2).wrapping_add(gear_ls[src[a] as usize]);
-        if (hash & mask_l_ls) == 0 {
-            return (hash, a);
-        }
-        hash = hash.wrapping_add(gear[src[a + 1] as usize]);
-        if (hash & mask_l) == 0 {
-            return (hash, a + 1);
-        }
-        index += 1;
+    if scan_start < end
+        && let Some(offset) = scan_region(
+            src, scan_start, end, &mut hash, mask_l_ls, mask_l, gear, gear_ls,
+        )
+    {
+        return (hash, offset);
     }
     // If all else fails, return the largest chunk. This will happen with
     // pathological data, such as all zeroes. When `remaining` is odd, its
@@ -430,6 +402,62 @@ fn cut_gear_arr(
         hash = (hash << 1).wrapping_add(gear[src[remaining - 1] as usize]);
     }
     (hash, remaining)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_region(
+    source: &[u8],
+    start: usize,
+    end: usize,
+    hash: &mut u64,
+    mask_ls: u64,
+    mask: u64,
+    gear: &[u64; 256],
+    gear_ls: &[u64; 256],
+) -> Option<usize> {
+    let mut offset = start;
+    let mut blocks = source[start..end].chunks_exact(6);
+    let mut current_hash = *hash;
+
+    macro_rules! scan_pair_or_return {
+        ($first:expr, $second:expr, $delta:literal) => {{
+            current_hash = (current_hash << 2).wrapping_add($first);
+            if current_hash & mask_ls == 0 {
+                *hash = current_hash;
+                return Some(offset + $delta);
+            }
+            current_hash = current_hash.wrapping_add($second);
+            if current_hash & mask == 0 {
+                *hash = current_hash;
+                return Some(offset + $delta + 1);
+            }
+        }};
+    }
+
+    for bytes in &mut blocks {
+        // Naming all six values up front lets LLVM schedule their loads well.
+        let g0 = gear_ls[bytes[0] as usize];
+        let g1 = gear[bytes[1] as usize];
+        let g2 = gear_ls[bytes[2] as usize];
+        let g3 = gear[bytes[3] as usize];
+        let g4 = gear_ls[bytes[4] as usize];
+        let g5 = gear[bytes[5] as usize];
+
+        scan_pair_or_return!(g0, g1, 0);
+        scan_pair_or_return!(g2, g3, 2);
+        scan_pair_or_return!(g4, g5, 4);
+        offset += 6;
+    }
+
+    for bytes in blocks.remainder().chunks_exact(2) {
+        let first = gear_ls[bytes[0] as usize];
+        let second = gear[bytes[1] as usize];
+        scan_pair_or_return!(first, second, 0);
+        offset += 2;
+    }
+
+    *hash = current_hash;
+    None
 }
 
 // Rounded base-2 logarithm; matches the behavior pre-4.0.0 so that mask
