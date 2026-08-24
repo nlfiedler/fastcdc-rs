@@ -115,6 +115,15 @@ cargo bench -- --baseline before
 
 The second run prints the percent change and a significance verdict for each benchmark. For trustworthy numbers, run on an otherwise idle machine and treat deltas smaller than roughly 10% as noise.
 
+To benchmark with a filter _and_ save the baseline, the syntax is a bit more elaborate:
+
+```shell
+git checkout master
+cargo bench --bench chunking -- --save-baseline before v2020
+git checkout <pr-branch>
+cargo bench --bench chunking -- --baseline before v2020
+```
+
 ## Reference Material
 
 The original algorithm from 2016 is described in [FastCDC: a Fast and Efficient Content-Defined Chunking Approach for Data Deduplication](https://www.usenix.org/system/files/conference/atc16/atc16-paper-xia.pdf), while the improved "rolling two bytes each time" version from 2020 is detailed in [The Design of Fast Content-Defined Chunking for Data Deduplication Based Storage Systems](https://ieeexplore.ieee.org/document/9055082).
