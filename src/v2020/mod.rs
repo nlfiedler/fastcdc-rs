@@ -416,7 +416,7 @@ fn scan_region(
     gear_ls: &[u64; 256],
 ) -> Option<usize> {
     let mut offset = start;
-    let mut blocks = source[start..end].chunks_exact(6);
+    let (blocks, remainder) = source[start..end].as_chunks::<6>();
     let mut current_hash = *hash;
 
     macro_rules! scan_pair_or_return {
@@ -434,7 +434,7 @@ fn scan_region(
         }};
     }
 
-    for bytes in &mut blocks {
+    for bytes in blocks {
         // Naming all six values up front lets LLVM schedule their loads well.
         let g0 = gear_ls[bytes[0] as usize];
         let g1 = gear[bytes[1] as usize];
@@ -449,7 +449,8 @@ fn scan_region(
         offset += 6;
     }
 
-    for bytes in blocks.remainder().chunks_exact(2) {
+    let (pairs, _) = remainder.as_chunks::<2>();
+    for bytes in pairs {
         let first = gear_ls[bytes[0] as usize];
         let second = gear[bytes[1] as usize];
         scan_pair_or_return!(first, second, 0);
@@ -1072,6 +1073,138 @@ mod tests {
         // for that byte, i.e. GEAR[0] (all-zero input).
         assert_eq!(second_hash, GEAR[0]);
         assert_ne!(second_hash, 0);
+    }
+
+    // Independent, deliberately naive re-implementation of the gear scan as
+    // it worked before PR #53 unrolled it to six bytes per iteration: one
+    // 2-byte candidate pair per turn, no `scan_region` involved. Used below
+    // as an oracle so a future change to the unrolled scan is checked
+    // against the documented algorithm rather than against itself.
+    #[allow(clippy::too_many_arguments)]
+    fn cut_gear_arr_reference(
+        source: &[u8],
+        min_size: usize,
+        avg_size: usize,
+        max_size: usize,
+        mask_s: u64,
+        mask_l: u64,
+        mask_s_ls: u64,
+        mask_l_ls: u64,
+    ) -> (u64, usize) {
+        let mut remaining = source.len();
+        if remaining <= min_size {
+            return (0, remaining);
+        }
+        let mut center = avg_size;
+        if remaining > max_size {
+            remaining = max_size;
+        } else if remaining < center {
+            center = remaining;
+        }
+        let src = &source[..remaining];
+        let limit1 = center / 2;
+        let limit2 = remaining / 2;
+        let mut index = min_size / 2;
+        let mut hash: u64 = 0;
+        while index < limit1 {
+            let a = index * 2;
+            hash = (hash << 2).wrapping_add(GEAR_LS[src[a] as usize]);
+            if (hash & mask_s_ls) == 0 {
+                return (hash, a);
+            }
+            hash = hash.wrapping_add(GEAR[src[a + 1] as usize]);
+            if (hash & mask_s) == 0 {
+                return (hash, a + 1);
+            }
+            index += 1;
+        }
+        while index < limit2 {
+            let a = index * 2;
+            hash = (hash << 2).wrapping_add(GEAR_LS[src[a] as usize]);
+            if (hash & mask_l_ls) == 0 {
+                return (hash, a);
+            }
+            hash = hash.wrapping_add(GEAR[src[a + 1] as usize]);
+            if (hash & mask_l) == 0 {
+                return (hash, a + 1);
+            }
+            index += 1;
+        }
+        if remaining % 2 == 1 {
+            hash = (hash << 1).wrapping_add(GEAR[src[remaining - 1] as usize]);
+        }
+        (hash, remaining)
+    }
+
+    // Xorshift64: small, dependency-free PRNG, good enough for fuzzing test
+    // inputs (not for anything security-sensitive).
+    struct Xorshift64(u64);
+    impl Xorshift64 {
+        fn next(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            self.0 = x;
+            x
+        }
+    }
+
+    #[test]
+    fn test_scan_region_matches_scalar_reference() {
+        // Regression test for PR #53 (six-byte unrolled scan / `scan_region`):
+        // the unrolled scan must return byte-for-byte identical (hash, offset)
+        // pairs to a plain 2-byte-at-a-time scan across every remainder shape
+        // `as_chunks::<6>()` can leave behind (0, 2, or 4 tail bytes), on both
+        // sides of the min_size/center/max_size boundaries the two mask
+        // phases split on.
+        let mask_s: u64 = 0x0000d90313530000; // 16KB bucket
+        let mask_l: u64 = 0x0000d90f03530000;
+        let mask_s_ls = mask_s << 1;
+        let mask_l_ls = mask_l << 1;
+        let min_size: usize = 4096;
+        let avg_size: usize = 16384;
+        let max_size: usize = 65536;
+
+        let mut rng = Xorshift64(0x243F6A8885A308D3);
+        let patterns: [fn(usize) -> u8; 3] = [|_| 0u8, |_| 0xFFu8, |i| (i % 256) as u8];
+
+        let check = |data: &[u8]| {
+            let expected = cut_gear_arr_reference(
+                data, min_size, avg_size, max_size, mask_s, mask_l, mask_s_ls, mask_l_ls,
+            );
+            let actual = cut_gear(
+                data, min_size, avg_size, max_size, mask_s, mask_l, mask_s_ls, mask_l_ls, &GEAR,
+                &GEAR_LS,
+            );
+            assert_eq!(
+                actual,
+                expected,
+                "mismatch for len={} (first bytes {:?})",
+                data.len(),
+                &data[..data.len().min(8)]
+            );
+        };
+
+        // Lengths chosen to land on every possible tail remainder (len % 6
+        // and len % 2) around each boundary the scan treats specially.
+        let lengths = [
+            0usize, 1, 2, 3, 4, 5, 6, 7, 4095, 4096, 4097, 4098, 4099, 4100, 4101, 4102, 16383,
+            16384, 16385, 16386, 16387, 16388, 16389, 65535, 65536, 65537, 65538, 65539, 65540,
+            65541, 70000, 70001,
+        ];
+        for &pattern in &patterns {
+            for &len in &lengths {
+                let data: Vec<u8> = (0..len).map(pattern).collect();
+                check(&data);
+            }
+        }
+
+        for _ in 0..500 {
+            let len = (rng.next() % 80_000) as usize;
+            let data: Vec<u8> = (0..len).map(|_| (rng.next() % 256) as u8).collect();
+            check(&data);
+        }
     }
 
     #[test]

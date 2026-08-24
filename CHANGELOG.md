@@ -5,6 +5,25 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 This file follows the convention described at
 [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Performance
+- **`v2020` gear hash scan loop unrolled to six bytes per iteration.** The
+  inner scan previously tested one 2-byte candidate pair per turn; a new
+  `scan_region` helper now processes three pairs (six bytes) per iteration,
+  naming all six GEAR/GEAR_LS lookups up front so LLVM can schedule the
+  independent loads around the serial hash-chain dependency instead of
+  serializing them behind per-pair loop overhead. The zero/two/four-byte
+  tail left over after the six-byte blocks is handled by the same pair
+  logic. Cut points and hashes are unchanged — pinned by the existing
+  fixture tests plus a new differential test that checks the unrolled scan
+  against a plain 2-byte-at-a-time reference across every tail-remainder
+  shape and both mask-selection boundaries. Gains are architecture-
+  dependent: roughly 30-60% higher end-to-end throughput measured on
+  x86_64 (Intel Skylake- and Xeon-class, and AMD Ryzen 7), but only about
+  1-3% on Apple Silicon (M1, arm64), where the wider out-of-order core
+  already extracts similar instruction-level parallelism from the
+  un-unrolled loop. (#53)
+
 ## [5.0.0] - 2026-08-22
 ### Breaking Changes
 - **`v2020` now requires even `min_size`, `avg_size`, and `max_size`.** The
