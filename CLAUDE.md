@@ -5,42 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```shell
-# Build
-cargo build
-
-# Run all tests
-cargo test
-
-# Run tests for a specific module
+# Run tests for a specific module or single test by name
 cargo test v2020
-cargo test ronomon
-
-# Run a single test by name
 cargo test test_cut_sekien_16k_chunks
 
-# Run tests with async/tokio feature
+# Run tests with the async feature flags (mutually exclusive, see below)
 cargo test --features tokio
-
-# Run tests with futures feature
 cargo test --features futures
 
 # Run an example
 cargo run --example v2020 -- --size 16384 test/fixtures/SekienAkashita.jpg
 cargo run --example stream2020 -- --size 16384 test/fixtures/SekienAkashita.jpg
 cargo run --example async2020 --features tokio -- --size 16384 test/fixtures/SekienAkashita.jpg
-
-# Generate the GEAR table (64-bit)
-cargo run --example table64
-
-# Generate the left-shifted GEAR table
-cargo run --example table64ls
-
-# Check for lints
-cargo clippy
-
-# Check docs
-cargo doc --features futures
 ```
+
+To regenerate the GEAR hash tables, use the `regenerate-gear-tables` skill.
 
 ## Architecture
 
@@ -55,15 +34,9 @@ This crate provides three independent implementations of the FastCDC content def
   - `StreamCDC` — reads from `Read`, implements `Iterator<Item = Result<ChunkData, Error>>`
   - `AsyncStreamCDC` — reads from `AsyncRead`, enabled by `tokio` or `futures` feature flags; produces a `Stream` via `.as_stream()`
 
-### Key types
-
-Each module defines its own `Chunk` / `ChunkData` structs. In `v2016` and `v2020`:
-- `Chunk` — returned by `FastCDC` iterator; contains `hash: u64`, `offset: usize`, `length: usize`
-- `ChunkData` — returned by `StreamCDC` / `AsyncStreamCDC`; adds `data: Vec<u8>` and uses `offset: u64`
-
 ### Gear tables
 
-The GEAR hash tables in `v2016` and `v2020` are identical 256-entry `[u64; 256]` arrays computed from MD5 digests of byte values 0–255. The `v2020` module also maintains a left-shifted twin (`GEAR_LS`) for the "rolling two bytes" optimization. The `examples/table64.rs` and `examples/table64ls.rs` programs regenerate these tables.
+The GEAR hash tables in `v2016` and `v2020` are identical 256-entry `[u64; 256]` arrays computed from MD5 digests of byte values 0–255. The `v2020` module also maintains a left-shifted twin (`GEAR_LS`) for the "rolling two bytes" optimization.
 
 ### Normalization
 
@@ -75,10 +48,7 @@ The GEAR hash tables in `v2016` and `v2020` are identical 256-entry `[u64; 256]`
 
 ### Feature flags
 
-- `tokio` — enables `AsyncStreamCDC` backed by `tokio::io::AsyncRead`
-- `futures` — enables `AsyncStreamCDC` backed by `futures::io::AsyncRead`
-
-The two async features are mutually exclusive in the conditional compilation guards (`#[cfg(all(feature = "tokio", not(feature = "futures")))]`).
+`tokio` and `futures` both enable `AsyncStreamCDC` (backed by their respective `AsyncRead` traits), but are mutually exclusive in the conditional compilation guards (`#[cfg(all(feature = "tokio", not(feature = "futures")))]`) — enabling both does not give you a choice at runtime.
 
 ### Test fixture
 
